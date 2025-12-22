@@ -1,0 +1,47 @@
+{
+  "name": "vue-timezone",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "run-p type-check \"build-only {@}\" --",
+    "preview": "vite preview",
+    "build-only": "vite build",
+    "type-check": "vue-tsc --build"
+  },
+  "dependencies": {
+    "@antfu/eslint-config": "^6.7.3",
+    "@vueuse/core": "^14.1.0",
+    "@vueuse/integrations": "^14.1.0",
+    "dayjs": "^1.11.19",
+    "sortablejs": "^1.15.6",
+    "vue": "^3.5.25",
+    "vue-draggable-plus": "^0.6.0"
+  },
+  "devDependencies": {
+    "@iconify/json": "^2.2.420",
+    "@tsconfig/node24": "^24.0.3",
+    "@types/node": "^24.10.1",
+    "@types/sortablejs": "^1.15.9",
+    "@unocss/eslint-plugin": "^66.5.10",
+    "@unocss/preset-attributify": "^66.5.10",
+    "@unocss/preset-uno": "^66.5.10",
+    "@unocss/preset-wind3": "^66.5.10",
+    "@vitejs/plugin-vue": "^6.0.2",
+    "@vue/tsconfig": "^0.8.1",
+    "eslint": "^9.39.2",
+    "eslint-plugin-format": "^1.1.0",
+    "npm-run-all2": "^8.0.4",
+    "pnpm": "^10.26.1",
+    "sass": "^1.97.1",
+    "typescript": "~5.9.0",
+    "unocss": "^66.5.10",
+    "vite": "^7.2.4",
+    "vite-plugin-vue-devtools": "^8.0.5",
+    "vue-tsc": "^3.1.5"
+  }
+}
