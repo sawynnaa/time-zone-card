@@ -47,7 +47,7 @@ export const COMMON_CITIES: TimezoneCity[] = [
 ]
 
 // 默认显示的城市ID列表
-export const DEFAULT_CARD_CITIES = ['beijing', 'shanghai', 'newyork', 'london']
+export const DEFAULT_CARD_CITIES = ['beijing', 'tokyo', 'newyork', 'london']
 
 // 获取所有IANA时区并转换为城市数据（用于搜索功能）
 export const ALL_TIMEZONES: TimezoneCity[] = (() => {
