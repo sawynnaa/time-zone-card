@@ -2,6 +2,16 @@ import dayjs from 'dayjs'
 import type { Dayjs } from 'dayjs'
 import utc from 'dayjs/plugin/utc'
 import timezone from 'dayjs/plugin/timezone'
+// 导入 dayjs 的语言包
+import 'dayjs/locale/zh-cn'
+import 'dayjs/locale/en'
+import 'dayjs/locale/ja'
+import 'dayjs/locale/ko'
+import 'dayjs/locale/de'
+import 'dayjs/locale/fr'
+import 'dayjs/locale/es'
+import 'dayjs/locale/it'
+import 'dayjs/locale/pt'
 
 // 初始化 Day.js 插件
 dayjs.extend(utc)
@@ -9,6 +19,24 @@ dayjs.extend(timezone)
 
 // 导出配置好的 dayjs 实例
 export { dayjs }
+
+/**
+ * 将 i18n 的 locale code 映射到 dayjs 的 locale code
+ */
+export function mapLocaleToDayjsLocale(locale: string): string {
+  const localeMap: Record<string, string> = {
+    'zh-CN': 'zh-cn',
+    'en': 'en',
+    'ja': 'ja',
+    'ko': 'ko',
+    'de': 'de',
+    'fr': 'fr',
+    'es': 'es',
+    'it': 'it',
+    'pt': 'pt',
+  }
+  return localeMap[locale] || 'en'
+}
 
 // 检查时区是否处于夏令时
 export function isDST(timezoneStr: string, date?: Date | Dayjs): boolean {
