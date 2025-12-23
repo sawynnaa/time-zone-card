@@ -3,8 +3,6 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useTimezoneState } from './composables/useTimezoneState'
 import { formatTime } from './composables/useTimezoneFormat'
-import { getTimeInZone } from './composables/useTimeCalculation'
-import { getCityById } from '@/data/cities'
 import LanguageSwitcher from '@/components/common/LanguageSwitcher.vue'
 
 const { t } = useI18n()
@@ -17,7 +15,6 @@ const {
   toggleTimeFormat,
   toggleUTCLabel,
   timeFormat,
-  activeCard,
 } = useTimezoneState()
 
 // 显示重置按钮的条件
@@ -25,16 +22,8 @@ const showResetButton = computed(() => isPreviewMode.value && cards.value.length
 
 // 获取当前时区的时间（显示用户本地时区的当前时间）
 const currentLocalTime = computed(() => {
-  // 使用激活卡片的时区，如果没有则使用第一张卡片的时区
-  const card = activeCard.value || cards.value[0]
-  if (!card)
-    return null
-
-  const city = getCityById(card.cityId)
-  if (!city)
-    return null
-
-  return getTimeInZone(currentTime.value, city.timezone)
+  // 直接返回 currentTime，它是电脑本地时区的当前时间
+  return currentTime.value
 })
 </script>
 
