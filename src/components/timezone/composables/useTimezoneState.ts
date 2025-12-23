@@ -1,7 +1,7 @@
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import type { Dayjs } from 'dayjs'
 import type { TimezoneCard, TimeFormat } from '@/types/timezone'
-import { DEFAULT_CARD_CITIES } from '@/data/cities'
+import { DEFAULT_CARD_CITIES, getCityById } from '@/data/cities'
 import { dayjs } from '@/utils/timezone-helpers'
 
 // 全局状态（单例模式）
@@ -16,10 +16,168 @@ const timeFormat = ref<TimeFormat>({
 
 let clockInterval: number | null = null
 
+const STORAGE_KEY = 'vue-timezone:state:v1'
+let persistenceInitialized = false
+let restoringFromStorage = false
+let persistQueued = false
+
+interface PersistedTimezoneStateV1 {
+  version: 1
+  cards: Array<Pick<TimezoneCard, 'id' | 'cityId'>>
+  activeCardId: string | null
+  timeFormat?: Partial<TimeFormat>
+}
+
+function canUseStorage(): boolean {
+  return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined'
+}
+
+function sanitizePersistedState(raw: unknown): PersistedTimezoneStateV1 | null {
+  if (!raw || typeof raw !== 'object')
+    return null
+
+  const record = raw as Record<string, unknown>
+  if (record.version !== 1)
+    return null
+
+  const persistedCards = record.cards
+  if (!Array.isArray(persistedCards))
+    return null
+
+  const cardsSanitized: Array<Pick<TimezoneCard, 'id' | 'cityId'>> = []
+  for (const item of persistedCards) {
+    if (!item || typeof item !== 'object')
+      continue
+    const card = item as Record<string, unknown>
+    if (typeof card.id !== 'string' || typeof card.cityId !== 'string')
+      continue
+    if (!getCityById(card.cityId))
+      continue
+    cardsSanitized.push({ id: card.id, cityId: card.cityId })
+  }
+
+  const activeId = typeof record.activeCardId === 'string' ? record.activeCardId : null
+  const timeFormatRaw = record.timeFormat
+  const timeFormatSanitized: PersistedTimezoneStateV1['timeFormat'] = {}
+  if (timeFormatRaw && typeof timeFormatRaw === 'object') {
+    const tf = timeFormatRaw as Record<string, unknown>
+    if (typeof tf.is24Hour === 'boolean')
+      timeFormatSanitized.is24Hour = tf.is24Hour
+    if (typeof tf.isUTC === 'boolean')
+      timeFormatSanitized.isUTC = tf.isUTC
+  }
+
+  return {
+    version: 1,
+    cards: cardsSanitized,
+    activeCardId: activeId,
+    timeFormat: timeFormatSanitized,
+  }
+}
+
+function restoreFromStorage(): boolean {
+  if (!canUseStorage())
+    return false
+
+  const raw = window.localStorage.getItem(STORAGE_KEY)
+  if (!raw)
+    return false
+
+  try {
+    const parsed = JSON.parse(raw) as unknown
+    const sanitized = sanitizePersistedState(parsed)
+    if (!sanitized || sanitized.cards.length === 0)
+      return false
+
+    restoringFromStorage = true
+
+    const restoredCards: TimezoneCard[] = sanitized.cards.map(c => ({
+      id: c.id,
+      cityId: c.cityId,
+      isActive: false,
+    }))
+
+    let restoredActiveId = sanitized.activeCardId
+    if (!restoredActiveId || !restoredCards.some(c => c.id === restoredActiveId))
+      restoredActiveId = restoredCards[0]?.id ?? null
+
+    restoredCards.forEach((card) => {
+      card.isActive = card.id === restoredActiveId
+    })
+
+    cards.value = restoredCards
+    activeCardId.value = restoredActiveId
+
+    timeFormat.value = {
+      is24Hour: sanitized.timeFormat?.is24Hour ?? timeFormat.value.is24Hour,
+      isUTC: sanitized.timeFormat?.isUTC ?? timeFormat.value.isUTC,
+    }
+
+    return true
+  }
+  catch {
+    return false
+  }
+  finally {
+    restoringFromStorage = false
+  }
+}
+
+function persistToStorage() {
+  if (restoringFromStorage)
+    return
+  if (!canUseStorage())
+    return
+
+  const state: PersistedTimezoneStateV1 = {
+    version: 1,
+    cards: cards.value.map(({ id, cityId }) => ({ id, cityId })),
+    activeCardId: activeCardId.value,
+    timeFormat: {
+      is24Hour: timeFormat.value.is24Hour,
+      isUTC: timeFormat.value.isUTC,
+    },
+  }
+
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+  }
+  catch {
+    // ignore quota / privacy mode errors
+  }
+}
+
+function schedulePersist() {
+  if (restoringFromStorage || persistQueued)
+    return
+  persistQueued = true
+
+  const queue = typeof queueMicrotask === 'function'
+    ? queueMicrotask
+    : (fn: () => void) => Promise.resolve().then(fn)
+
+  queue(() => {
+    persistQueued = false
+    persistToStorage()
+  })
+}
+
+function setupPersistence() {
+  if (persistenceInitialized)
+    return
+  persistenceInitialized = true
+
+  watch(cards, schedulePersist, { deep: true, flush: 'sync' })
+  watch(activeCardId, schedulePersist, { flush: 'sync' })
+  watch(timeFormat, schedulePersist, { deep: true, flush: 'sync' })
+}
+
 /**
  * 时区状态管理 Composable
  */
 export function useTimezoneState() {
+  setupPersistence()
+
   // 显示的时间（当前时间或预览时间）
   const displayTime = computed(() => previewTime.value || currentTime.value)
 
@@ -29,6 +187,10 @@ export function useTimezoneState() {
   // 初始化默认卡片
   function initializeCards() {
     if (cards.value.length === 0) {
+      const restored = restoreFromStorage()
+      if (restored)
+        return
+
       DEFAULT_CARD_CITIES.forEach((cityId, index) => {
         const card: TimezoneCard = {
           id: `card-${Date.now()}-${index}`,
