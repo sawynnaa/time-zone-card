@@ -53,7 +53,6 @@ const previewTimePosition = computed(() => {
             }"
           />
         </div>
-
         <!-- 实际的 range input（透明覆盖） -->
         <input
           v-model.number="sliderValue"

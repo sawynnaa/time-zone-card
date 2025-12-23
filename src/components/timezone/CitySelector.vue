@@ -63,10 +63,10 @@ function closeModal() {
     <Transition name="modal">
       <div
         v-if="show"
-        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 "
         @click.self="closeModal"
       >
-        <div class="bg-white rounded-xl p-6 md:p-8 max-w-4xl w-full max-h-[85vh] overflow-y-auto shadow-2xl">
+        <div class="bg-white rounded-xl p-6 md:p-8 max-w-4xl w-full max-h-[85vh] overflow-y-auto shadow-2xl flex flex-col">
           <!-- 标题 -->
           <div class="flex justify-between items-center mb-6">
             <h2 class="text-2xl font-bold text-gray-900">
@@ -91,7 +91,7 @@ function closeModal() {
           </div>
 
           <!-- 城市网格 -->
-          <div v-if="filteredCities.length > 0" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div v-if="filteredCities.length > 0" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 overflow-auto">
             <button
               v-for="city in filteredCities"
               :key="city.id"
@@ -161,4 +161,5 @@ function closeModal() {
 .modal-leave-to .bg-white {
   transform: scale(0.9);
 }
+
 </style>

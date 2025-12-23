@@ -7,6 +7,8 @@ export default defineConfig({
     presetAttributify(),
     presetIcons({
       extraProperties: {
+                'display': 'inline-block',
+        'vertical-align': 'middle',
       // ...
       },
     }),
