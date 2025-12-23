@@ -85,8 +85,9 @@ function closeModal() {
             <input
               v-model="searchQuery"
               type="text"
+              border="1 solid gray-300 focus:transparent"
               placeholder="搜索城市、国家或时区..."
-              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              class="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
             >
           </div>
 
