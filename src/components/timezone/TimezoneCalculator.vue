@@ -83,7 +83,7 @@ onUnmounted(() => {
     <div
       ref="cardsContainerRef"
       class="grid gap-6"
-      style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));"
+      style="grid-template-columns: repeat(auto-fit, minmax(300px, 25%));"
     >
       <!-- 时区卡片 -->
       <TimezoneCard
