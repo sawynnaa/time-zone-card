@@ -18,6 +18,7 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<Emits>()
 
 const searchQuery = ref('')
+const isMouseDownOutside = ref(false)
 
 // 过滤后的城市列表
 const filteredCities = computed(() => {
@@ -51,10 +52,24 @@ function selectCity(cityId: string) {
   searchQuery.value = ''
 }
 
+// 处理背景 mousedown 事件
+function handleBackgroundMouseDown() {
+  isMouseDownOutside.value = true
+}
+
+// 处理背景 mouseup 事件
+function handleBackgroundMouseUp() {
+  if (isMouseDownOutside.value) {
+    closeModal()
+  }
+  isMouseDownOutside.value = false
+}
+
 // 关闭模态框
 function closeModal() {
   emit('close')
   searchQuery.value = ''
+  isMouseDownOutside.value = false
 }
 </script>
 
@@ -64,7 +79,8 @@ function closeModal() {
       <div
         v-if="show"
         class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 "
-        @click.self="closeModal"
+        @mousedown.self="handleBackgroundMouseDown"
+        @mouseup.self="handleBackgroundMouseUp"
       >
         <div class="bg-white rounded-xl p-6 md:p-8 max-w-4xl w-full max-h-[85vh] overflow-y-auto shadow-2xl flex flex-col">
           <!-- 标题 -->
