@@ -16,9 +16,14 @@ const timeFormat = ref<TimeFormat>({
 
 let clockInterval: number | null = null
 
+// --- 本地存储持久化（刷新后还原卡片）---
+// 版本化 key，后续结构变更时可通过升级 version 兼容旧数据
 const STORAGE_KEY = 'vue-timezone:state:v1'
+// 单例 composable 可能被多处引用，确保只初始化一次持久化 watch
 let persistenceInitialized = false
+// 从 localStorage 恢复时避免触发回写（防止“恢复->立刻覆盖”/循环）
 let restoringFromStorage = false
+// 批量变更（如拖拽排序）时合并多次写入，降低 localStorage 压力
 let persistQueued = false
 
 interface PersistedTimezoneStateV1 {
@@ -28,10 +33,12 @@ interface PersistedTimezoneStateV1 {
   timeFormat?: Partial<TimeFormat>
 }
 
+// SSR/无痕/禁用存储等场景下，localStorage 可能不可用
 function canUseStorage(): boolean {
   return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined'
 }
 
+// 校验并清洗持久化数据（避免结构不对/城市被移除导致报错）
 function sanitizePersistedState(raw: unknown): PersistedTimezoneStateV1 | null {
   if (!raw || typeof raw !== 'object')
     return null
@@ -75,6 +82,7 @@ function sanitizePersistedState(raw: unknown): PersistedTimezoneStateV1 | null {
   }
 }
 
+// 尝试从 localStorage 恢复：成功则返回 true；失败则返回 false 继续走默认初始化
 function restoreFromStorage(): boolean {
   if (!canUseStorage())
     return false
@@ -91,6 +99,7 @@ function restoreFromStorage(): boolean {
 
     restoringFromStorage = true
 
+    // 只恢复必要字段：id/cityId；isActive 会根据 activeCardId 重新计算
     const restoredCards: TimezoneCard[] = sanitized.cards.map(c => ({
       id: c.id,
       cityId: c.cityId,
@@ -123,6 +132,7 @@ function restoreFromStorage(): boolean {
   }
 }
 
+// 写入 localStorage（忽略配额/隐私模式等异常）
 function persistToStorage() {
   if (restoringFromStorage)
     return
@@ -147,6 +157,7 @@ function persistToStorage() {
   }
 }
 
+// 合并短时间内多次状态变化，只在微任务里写一次 localStorage
 function schedulePersist() {
   if (restoringFromStorage || persistQueued)
     return
@@ -167,6 +178,7 @@ function setupPersistence() {
     return
   persistenceInitialized = true
 
+  // cards/active/timeFormat 任意变化都持久化；deep 用于捕获数组内对象字段变更
   watch(cards, schedulePersist, { deep: true, flush: 'sync' })
   watch(activeCardId, schedulePersist, { flush: 'sync' })
   watch(timeFormat, schedulePersist, { deep: true, flush: 'sync' })
@@ -187,10 +199,12 @@ export function useTimezoneState() {
   // 初始化默认卡片
   function initializeCards() {
     if (cards.value.length === 0) {
+      // 1) 优先从本地存储恢复用户上次的卡片/排序/设置
       const restored = restoreFromStorage()
       if (restored)
         return
 
+      // 2) 本地存储无数据或不合法时，才创建默认卡片
       DEFAULT_CARD_CITIES.forEach((cityId, index) => {
         const card: TimezoneCard = {
           id: `card-${Date.now()}-${index}`,
