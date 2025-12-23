@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import Sortable from 'sortablejs'
+import { useI18n } from 'vue-i18n'
 import { useTimezoneState } from './composables/useTimezoneState'
 import TimezoneHeader from './TimezoneHeader.vue'
 import TimezoneCard from './TimezoneCard.vue'
 import CitySelector from './CitySelector.vue'
+
+const { t } = useI18n()
 
 const {
   cards,
@@ -104,7 +107,7 @@ onUnmounted(() => {
       >
         <div class="i-carbon-add text-6xl text-gray-400 group-hover:text-blue-500 transition-colors" />
         <span class="text-gray-500 group-hover:text-blue-600 font-medium transition-colors">
-          添加城市
+          {{ t('citySelector.addCity') }}
         </span>
       </button>
     </div>

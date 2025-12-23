@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useTimezoneState } from './composables/useTimezoneState'
 import { formatTime } from './composables/useTimezoneFormat'
 import { getTimeInZone } from './composables/useTimeCalculation'
 import { getCityById } from '@/data/cities'
+import LanguageSwitcher from '@/components/common/LanguageSwitcher.vue'
+
+const { t } = useI18n()
 
 const {
   currentTime,
@@ -40,7 +44,7 @@ const currentLocalTime = computed(() => {
       <!-- 左侧：当前时间显示 -->
       <div>
         <div class="text-sm text-gray-500 mb-1">
-          当前时间
+          {{ t('header.currentTime') }}
         </div>
         <div v-if="currentLocalTime" class="text-3xl font-bold text-gray-900 font-mono">
           {{ formatTime(currentLocalTime, timeFormat.is24Hour) }}
@@ -56,7 +60,7 @@ const currentLocalTime = computed(() => {
           @click="resetToCurrentTime"
         >
           <div class="i-carbon-reset text-lg" />
-          重置时间
+          {{ t('header.resetTime') }}
         </button>
 
         <!-- 12/24小时制切换 -->
@@ -64,7 +68,7 @@ const currentLocalTime = computed(() => {
           class="px-4 py-2 border-2 border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
           @click="toggleTimeFormat"
         >
-          {{ timeFormat.is24Hour ? '24小时制' : '12小时制' }}
+          {{ timeFormat.is24Hour ? t('header.hour24') : t('header.hour12') }}
         </button>
 
         <!-- UTC/GMT切换 -->
@@ -74,6 +78,9 @@ const currentLocalTime = computed(() => {
         >
           {{ timeFormat.isUTC ? 'UTC' : 'GMT' }}
         </button>
+
+        <!-- 语言切换器 -->
+        <LanguageSwitcher />
       </div>
     </div>
   </div>

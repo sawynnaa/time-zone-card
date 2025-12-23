@@ -97,3 +97,36 @@ export function getCityById(id: string): TimezoneCity | undefined {
 export function getCityByTimezone(timezone: string): TimezoneCity | undefined {
   return ALL_TIMEZONES.find(city => city.timezone === timezone)
 }
+
+// 国家名称到键的映射（用于翻译）
+export const COUNTRY_CODE_MAP: Record<string, string> = {
+  '中国': 'china',
+  '中国台湾': 'taiwan',
+  '日本': 'japan',
+  '韩国': 'korea',
+  '新加坡': 'singapore',
+  '泰国': 'thailand',
+  '阿联酋': 'uae',
+  '印度': 'india',
+  '澳大利亚': 'australia',
+  '新西兰': 'newzealand',
+  '英国': 'uk',
+  '法国': 'france',
+  '德国': 'germany',
+  '意大利': 'italy',
+  '西班牙': 'spain',
+  '俄罗斯': 'russia',
+  '荷兰': 'netherlands',
+  '美国': 'usa',
+  '加拿大': 'canada',
+  '墨西哥': 'mexico',
+  '巴西': 'brazil',
+  '阿根廷': 'argentina',
+  '埃及': 'egypt',
+  '南非': 'southafrica',
+}
+
+// 获取国家的翻译键
+export function getCountryKey(countryName: string): string {
+  return COUNTRY_CODE_MAP[countryName] || 'unknown'
+}

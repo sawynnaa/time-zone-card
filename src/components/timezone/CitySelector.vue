@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { COMMON_CITIES, ALL_TIMEZONES } from '@/data/cities'
+import { useCityTranslation } from '@/composables/useCityTranslation'
+
+const { t } = useI18n()
+const { getCityName, getCountryName } = useCityTranslation()
 
 interface Props {
   show: boolean
@@ -20,7 +25,7 @@ const emit = defineEmits<Emits>()
 const searchQuery = ref('')
 const isMouseDownOutside = ref(false)
 
-// 过滤后的城市列表
+// 过滤后的城市列表（支持搜索翻译后的名称）
 const filteredCities = computed(() => {
   if (!searchQuery.value.trim()) {
     return COMMON_CITIES
@@ -29,10 +34,16 @@ const filteredCities = computed(() => {
   const query = searchQuery.value.toLowerCase().trim()
 
   return ALL_TIMEZONES.filter((city) => {
+    const translatedCity = getCityName(city.id).toLowerCase()
+    const translatedCountry = getCountryName(city.country).toLowerCase()
+    const timezone = city.timezone.toLowerCase()
+
     return (
-      city.city.toLowerCase().includes(query)
+      translatedCity.includes(query)
+      || translatedCountry.includes(query)
+      || timezone.includes(query)
+      || city.city.toLowerCase().includes(query)
       || city.country.toLowerCase().includes(query)
-      || city.timezone.toLowerCase().includes(query)
     )
   })
 })
@@ -86,7 +97,7 @@ function closeModal() {
           <!-- 标题 -->
           <div class="flex justify-between items-center mb-6">
             <h2 class="text-2xl font-bold text-gray-900">
-              选择城市
+              {{ t('citySelector.title') }}
             </h2>
             <button
               class="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -102,7 +113,7 @@ function closeModal() {
               v-model="searchQuery"
               type="text"
               border="1 solid gray-300 focus:transparent"
-              placeholder="搜索城市、国家或时区..."
+              :placeholder="t('citySelector.searchPlaceholder')"
               class="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
             >
           </div>
@@ -127,13 +138,13 @@ function closeModal() {
                   isCityAdded(city.id) ? 'text-gray-400' : 'text-gray-900 group-hover:text-blue-600',
                 ]"
               >
-                {{ city.city }}
+                {{ getCityName(city.id) }}
                 <span v-if="isCityAdded(city.id)" class="ml-2 text-xs">
-                  (已添加)
+                  {{ t('citySelector.alreadyAdded') }}
                 </span>
               </div>
               <div class="text-xs text-gray-500 mt-0.5">
-                {{ city.country }}
+                {{ getCountryName(city.country) }}
               </div>
             </button>
           </div>
@@ -142,10 +153,10 @@ function closeModal() {
           <div v-else class="text-center py-12 text-gray-500">
             <div class="i-carbon-search-locate text-5xl mx-auto mb-3 opacity-30" />
             <p class="text-lg">
-              未找到匹配的城市
+              {{ t('citySelector.noResults') }}
             </p>
             <p class="text-sm mt-1">
-              请尝试其他关键词
+              {{ t('citySelector.tryOtherKeywords') }}
             </p>
           </div>
         </div>

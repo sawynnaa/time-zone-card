@@ -2,13 +2,18 @@
 import { ref, computed } from 'vue'
 import type { Dayjs } from 'dayjs'
 import type { TimezoneCard } from '@/types/timezone'
+import { useI18n } from 'vue-i18n'
 import { getCityById } from '@/data/cities'
 import { useTimezoneState } from './composables/useTimezoneState'
+import { useCityTranslation } from '@/composables/useCityTranslation'
 import { getTimeInZone } from './composables/useTimeCalculation'
 import { formatTime, formatDate, formatTimezone } from './composables/useTimezoneFormat'
 import { getTimeDifference, formatTimeDifference } from './composables/useTimeDifference'
 import CardTimelineSlider from './CardTimelineSlider.vue'
 import CitySelector from './CitySelector.vue'
+
+const { t } = useI18n()
+const { getCityName, getCountryName } = useCityTranslation()
 
 interface Props {
   card: TimezoneCard
@@ -118,10 +123,10 @@ function handleSliderUpdate(newTime: Dayjs) {
     <div class="flex justify-between items-start mb-4">
       <div class="flex-1">
         <h3 class="text-2xl font-bold">
-          {{ city?.city || '未知城市' }}
+          {{ city ? getCityName(city.id) : t('card.unknownCity') }}
         </h3>
         <p :class="['text-sm mt-1', isActive ? 'opacity-70' : 'opacity-60']">
-          {{ city?.country || '未知国家' }}
+          {{ city ? getCountryName(city.country) : t('card.unknownCountry') }}
         </p>
         <p :class="['text-xs mt-1', isActive ? 'opacity-50' : 'opacity-40']">
           {{ city ? formatTimezone(city.timezone, timeFormat.isUTC) : '' }}
@@ -135,7 +140,7 @@ function handleSliderUpdate(newTime: Dayjs) {
           class="drag-handle cursor-grab active:cursor-grabbing text-xl transition-colors duration-200"
           :class="isActive ? 'text-white hover:text-blue-300' : 'text-gray-400 hover:text-blue-500'"
           @mousedown.stop="handleDragStart"
-          title="拖动排序"
+          :title="t('card.dragToSort')"
         >
           <div class="i-carbon-draggable" />
         </div>
@@ -145,7 +150,7 @@ function handleSliderUpdate(newTime: Dayjs) {
           class="cursor-pointer text-xl transition-colors duration-200"
           :class="isActive ? 'text-white hover:text-blue-300' : 'text-gray-600 hover:text-blue-500'"
           @click="handleEditCity"
-          title="编辑城市"
+          :title="t('card.editCity')"
         >
           <div class="i-carbon-edit" />
         </div>
@@ -156,7 +161,7 @@ function handleSliderUpdate(newTime: Dayjs) {
           class="cursor-pointer text-xl transition-colors duration-200"
           :class="isActive ? 'text-white hover:text-red-300' : 'text-gray-600 hover:text-red-500'"
           @click="handleRemove"
-          title="删除卡片"
+          :title="t('card.deleteCard')"
         >
           <div class="i-carbon-close" />
         </div>
@@ -165,7 +170,7 @@ function handleSliderUpdate(newTime: Dayjs) {
 
     <!-- 时差标签（非激活卡片） -->
     <div :class="['text-sm mb-3 font-medium', isActive ? 'opacity-70' : 'text-blue-600']">
-      <span v-if="timeDiff">时差: {{ timeDiff }}</span>
+      <span v-if="timeDiff">{{ t('card.timeDiff') }}: {{ timeDiff }}</span>
       <span v-else>&nbsp;</span>
     </div>
 
