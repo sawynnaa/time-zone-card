@@ -1,6 +1,5 @@
 // @unocss-include
 import { createI18n } from 'vue-i18n'
-import type { I18n } from 'vue-i18n'
 import zhCN from './locales/zh-CN'
 import en from './locales/en'
 import ja from './locales/ja'
@@ -91,7 +90,7 @@ function mergeMessages(uiMessages: any, cityMessages: any) {
 /**
  * 设置 i18n 实例
  */
-export function setupI18n(): I18n {
+export function setupI18n() {
   const i18n = createI18n({
     legacy: false, // 使用 Composition API 模式
     locale: 'zh-CN', // 默认语言
