@@ -1,6 +1,6 @@
 import type { Dayjs } from 'dayjs'
 import { dayjs, mapLocaleToDayjsLocale } from '@/utils/timezone-helpers'
-import { useLocale } from '@/composables/useLocale'
+import { useLocaleStore } from '@/stores/localeStore'
 
 /**
  * 格式化时间显示
@@ -23,8 +23,8 @@ export function formatTime(date: Dayjs, is24Hour: boolean): string {
  * @returns 格式化后的日期字符串，例如 "2025-12-22 Sunday"（会根据当前语言显示对应的星期）
  */
 export function formatDate(date: Dayjs): string {
-  const { currentLocale } = useLocale()
-  const dayjsLocale = mapLocaleToDayjsLocale(currentLocale.value)
+  const localeStore = useLocaleStore()
+  const dayjsLocale = mapLocaleToDayjsLocale(localeStore.currentLocale)
 
   // 设置语言并格式化
   return date.locale(dayjsLocale).format('YYYY-MM-DD dddd')

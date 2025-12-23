@@ -1,16 +1,19 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useLocale } from '@/composables/useLocale'
+import { storeToRefs } from 'pinia'
+import { useLocaleStore } from '@/stores/localeStore'
 
 const { locale } = useI18n()
-const { currentLocale, setLocale, availableLocales } = useLocale()
+const localeStore = useLocaleStore()
+const { currentLocale, availableLocales } = storeToRefs(localeStore)
+const { setLocale } = localeStore
 
 const isOpen = ref(false)
 const dropdownRef = ref<HTMLElement | null>(null)
 
 // 当前语言信息
-const currentLanguage = computed(() => availableLocales[currentLocale.value])
+const currentLanguage = computed(() => availableLocales.value[currentLocale.value])
 
 // 切换下拉菜单
 function toggleDropdown() {

@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import type { Dayjs } from 'dayjs'
-import type { TimezoneCard } from '@/types/timezone'
 import { useI18n } from 'vue-i18n'
+import { storeToRefs } from 'pinia'
 import { getCityById } from '@/data/cities'
-import { useTimezoneState } from './composables/useTimezoneState'
+import { useTimezoneStore } from '@/stores/timezoneStore'
 import { useCityTranslation } from '@/composables/useCityTranslation'
 import { getTimeInZone } from './composables/useTimeCalculation'
 import { formatTime, formatDate, formatTimezone } from './composables/useTimezoneFormat'
@@ -16,27 +15,36 @@ const { t } = useI18n()
 const { getCityName, getCountryName } = useCityTranslation()
 
 interface Props {
-  card: TimezoneCard
-  isActive: boolean
-  showClose: boolean
+  cardId: string
 }
 
 const props = defineProps<Props>()
 
-const { displayTime, timeFormat, setActiveCard, removeCard, updateCardCity, activeCard, cards, setPreviewTime } = useTimezoneState()
+const timezoneStore = useTimezoneStore()
+const { displayTime, timeFormat, activeCard, cards, existingCityIds } = storeToRefs(timezoneStore)
+const { setActiveCard, removeCard, updateCardCity } = timezoneStore
+
+// Derive card from store based on cardId
+const card = computed(() => cards.value.find(c => c.id === props.cardId))
+
+const isActive = computed(() => card.value?.id === activeCard.value?.id)
+
+const showClose = computed(() => cards.value.length > 1)
 
 // 控制是否正在拖拽
 const isDragging = ref(false)
 
 // 已添加的城市 ID 列表（排除当前卡片）
-const existingCityIds = computed(() => {
-  return cards.value
-    .filter(c => c.id !== props.card.id)
-    .map(c => c.cityId)
+const filteredExistingCityIds = computed(() => {
+  if (!card.value) return existingCityIds.value
+  return existingCityIds.value.filter(id => id !== card.value!.cityId)
 })
 
 // 获取城市信息
-const city = computed(() => getCityById(props.card.cityId))
+const city = computed(() => {
+  if (!card.value) return null
+  return getCityById(card.value.cityId)
+})
 
 // 计算该卡片时区的时间
 const cardTime = computed(() => {
@@ -47,7 +55,7 @@ const cardTime = computed(() => {
 
 // 计算与激活卡片的时差
 const timeDiff = computed(() => {
-  if (props.isActive || !activeCard.value || !city.value)
+  if (isActive.value || !activeCard.value || !city.value)
     return null
 
   const activeCity = getCityById(activeCard.value.cityId)
@@ -65,8 +73,8 @@ const timeDiff = computed(() => {
 
 // 切换激活状态
 function toggleActive() {
-  if (!props.isActive && !isDragging.value) {
-    setActiveCard(props.card.id)
+  if (!isActive.value && !isDragging.value && card.value) {
+    setActiveCard(card.value.id)
   }
 }
 
@@ -88,7 +96,9 @@ function handleDragStart() {
 
 // 删除卡片
 function handleRemove() {
-  removeCard(props.card.id)
+  if (card.value) {
+    removeCard(card.value.id)
+  }
 }
 
 // 城市选择器
@@ -99,14 +109,13 @@ function handleEditCity() {
 }
 
 function handleCitySelect(cityId: string) {
-  updateCardCity(props.card.id, cityId)
+  if (card.value) {
+    updateCardCity(card.value.id, cityId)
+  }
   showCitySelector.value = false
 }
 
-// 处理滑块时间更新
-function handleSliderUpdate(newTime: Dayjs) {
-  setPreviewTime(newTime)
-}
+// No longer need handleSliderUpdate - CardTimelineSlider calls store directly
 </script>
 
 <template>
@@ -188,16 +197,13 @@ function handleSliderUpdate(newTime: Dayjs) {
     <CardTimelineSlider
       v-if="city"
       :timezone="city.timezone"
-      :is-active="isActive"
-      :display-time="displayTime"
-      :time-format="timeFormat"
-      @update-time="handleSliderUpdate"
+      :card-id="cardId"
     />
 
     <!-- 城市选择器模态框 -->
     <CitySelector
       :show="showCitySelector"
-      :existing-city-ids="existingCityIds"
+      :existing-city-ids="filteredExistingCityIds"
       @select="handleCitySelect"
       @close="showCitySelector = false"
     />

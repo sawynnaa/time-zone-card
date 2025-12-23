@@ -1,21 +1,26 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useTimezoneState } from './composables/useTimezoneState'
+import { storeToRefs } from 'pinia'
+import { useTimezoneStore } from '@/stores/timezoneStore'
 import { formatTime } from './composables/useTimezoneFormat'
 import LanguageSwitcher from '@/components/common/LanguageSwitcher.vue'
 
 const { t } = useI18n()
 
+const timezoneStore = useTimezoneStore()
 const {
   currentTime,
   isPreviewMode,
   cards,
+  timeFormat,
+} = storeToRefs(timezoneStore)
+
+const {
   resetToCurrentTime,
   toggleTimeFormat,
   toggleUTCLabel,
-  timeFormat,
-} = useTimezoneState()
+} = timezoneStore
 
 // 显示重置按钮的条件
 const showResetButton = computed(() => isPreviewMode.value && cards.value.length > 1)

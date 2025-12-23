@@ -1,27 +1,27 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { Dayjs } from 'dayjs'
+import { storeToRefs } from 'pinia'
+import { useTimezoneStore } from '@/stores/timezoneStore'
 import { timeToSliderValue, sliderValueToTime, getTimelineHourMarkers, getTimelinePosition, getTimeInZone } from './composables/useTimeCalculation'
 import { dayjs } from '@/utils/timezone-helpers'
 
 interface Props {
   timezone: string
-  isActive: boolean
-  displayTime: Dayjs
-  timeFormat: {
-    is24Hour: boolean
-    isUTC: boolean
-  }
+  cardId: string
 }
 
 const props = defineProps<Props>()
-const emit = defineEmits<{
-  updateTime: [time: Dayjs]
-}>()
+
+const timezoneStore = useTimezoneStore()
+const { displayTime, timeFormat, activeCard } = storeToRefs(timezoneStore)
+const { setPreviewTime } = timezoneStore
+
+const isActive = computed(() => activeCard.value?.id === props.cardId)
 
 // 计算该时区的本地时间
 const localTime = computed(() => {
-  return getTimeInZone(props.displayTime, props.timezone)
+  return getTimeInZone(displayTime.value, props.timezone)
 })
 
 // 滑块值 (0-95)，基于本地时间
@@ -30,7 +30,7 @@ const sliderValue = computed({
     return timeToSliderValue(localTime.value)
   },
   set: (value: number) => {
-    if (!props.isActive) return
+    if (!isActive.value) return
 
     // 将滑块值转换为本地时间（保留日期）
     const newLocalTime = sliderValueToTime(value, localTime.value)
@@ -41,12 +41,12 @@ const sliderValue = computed({
       props.timezone,
     )
 
-    emit('updateTime', globalTime)
+    setPreviewTime(globalTime)
   },
 })
 
 // 小时标记
-const hourMarkers = computed(() => getTimelineHourMarkers(props.timeFormat.is24Hour))
+const hourMarkers = computed(() => getTimelineHourMarkers(timeFormat.value.is24Hour))
 
 // 预览时间位置百分比（基于本地时间）
 const previewTimePosition = computed(() => {

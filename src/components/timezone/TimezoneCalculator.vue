@@ -1,33 +1,24 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import Sortable from 'sortablejs'
 import { useI18n } from 'vue-i18n'
-import { useTimezoneState } from './composables/useTimezoneState'
+import { storeToRefs } from 'pinia'
+import { useTimezoneStore } from '@/stores/timezoneStore'
 import TimezoneHeader from './TimezoneHeader.vue'
 import TimezoneCard from './TimezoneCard.vue'
 import CitySelector from './CitySelector.vue'
 
 const { t } = useI18n()
 
-const {
-  cards,
-  activeCardId,
-  initializeCards,
-  addCard,
-  startClock,
-  stopClock,
-} = useTimezoneState()
+const timezoneStore = useTimezoneStore()
+const { cards, existingCityIds } = storeToRefs(timezoneStore)
+const { initializeCards, addCard, startClock, stopClock } = timezoneStore
 
 // 卡片容器引用
 const cardsContainerRef = ref<HTMLElement | null>(null)
 
 // 城市选择器状态
 const showAddCitySelector = ref(false)
-
-// 已添加的城市 ID 列表
-const existingCityIds = computed(() => {
-  return cards.value.map(card => card.cityId)
-})
 
 // 添加新卡片
 function handleAddCard(cityId: string) {
@@ -93,9 +84,7 @@ onUnmounted(() => {
       <TimezoneCard
         v-for="card in cards"
         :key="card.id"
-        :card="card"
-        :is-active="card.id === activeCardId"
-        :show-close="cards.length > 1"
+        :card-id="card.id"
         :data-card-id="card.id"
         class="timezone-card"
       />
