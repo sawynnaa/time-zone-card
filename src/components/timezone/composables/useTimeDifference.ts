@@ -34,7 +34,7 @@ export function getTimeDifference(
  */
 export function formatTimeDifference(diffMinutes: number): string {
   if (diffMinutes === 0) {
-    return '相同时区'
+    return '0h'
   }
 
   const sign = diffMinutes > 0 ? '+' : '-'
