@@ -44,11 +44,11 @@ export function formatTimeDifference(diffMinutes: number): string {
   const minutes = absDiff % 60
 
   if (hours === 0) {
-    return `${sign}${minutes}分钟`
+    return `${sign}${minutes}min`
   }
 
   if (minutes === 0) {
-    return `${sign}${hours}小时`
+    return `${sign}${hours}h`
   }
 
   // 如果有小数小时（如 5.5 小时）

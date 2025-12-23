@@ -10,7 +10,7 @@ const activeCardId = ref<string | null>(null)
 const currentTime = ref<Dayjs>(dayjs())
 const previewTime = ref<Dayjs | null>(null)
 const timeFormat = ref<TimeFormat>({
-  is24Hour: false, // 默认12小时制
+  is24Hour: true, // 默认24小时制
   isUTC: true, // 默认使用 UTC
 })
 
