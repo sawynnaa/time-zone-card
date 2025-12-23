@@ -83,7 +83,7 @@ onUnmounted(() => {
     <div
       ref="cardsContainerRef"
       class="grid gap-6"
-      style="grid-template-columns: repeat(auto-fit, minmax(300px, 25%));"
+      style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));"
     >
       <!-- 时区卡片 -->
       <TimezoneCard
@@ -97,7 +97,7 @@ onUnmounted(() => {
 
       <!-- 添加卡片按钮 -->
       <button
-        class="border-2 border-dashed border-gray-300 rounded-xl p-6 hover:border-blue-500 hover:bg-blue-50 transition-all duration-300 flex flex-col items-center justify-center gap-3 group"
+        class="border-2 border-dashed border-gray-300 rounded-xl p-6 hover:border-blue-500 hover:bg-blue-50 transition-all duration-300 flex flex-col items-center justify-center gap-3 group h-[300px]"
         @click="showAddCitySelector = true"
       >
         <div class="i-carbon-add text-6xl text-gray-400 group-hover:text-blue-500 transition-colors" />

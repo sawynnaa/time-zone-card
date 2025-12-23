@@ -107,7 +107,7 @@ function handleSliderUpdate(newTime: Dayjs) {
 <template>
   <div
     :class="[
-      'rounded-xl p-6 transition-all duration-300 select-none',
+      'rounded-xl p-6 transition-all duration-300 select-none h-[300px]',
       isActive
         ? 'bg-gray-900 text-white shadow-2xl '
         : 'bg-white text-gray-900 shadow-md hover:shadow-lg border border-gray-200',
