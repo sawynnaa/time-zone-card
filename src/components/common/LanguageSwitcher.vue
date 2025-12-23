@@ -70,7 +70,7 @@ onUnmounted(() => {
           @click="selectLanguage(code)"
         >
           <span class="flex items-center gap-2">
-            <span>{{ lang.flag }}</span>
+            <i :class="lang.flag"></i>
             <span>{{ lang.name }}</span>
           </span>
           <div v-if="currentLocale === code" class="i-carbon-checkmark text-blue-500" />

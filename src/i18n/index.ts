@@ -1,3 +1,4 @@
+// @unocss-include
 import { createI18n } from 'vue-i18n'
 import type { I18n } from 'vue-i18n'
 import zhCN from './locales/zh-CN'
@@ -24,55 +25,55 @@ export const SUPPORTED_LOCALES = {
   'zh-CN': {
     code: 'zh-CN',
     name: '简体中文',
-    flag: '🇨🇳',
+    flag: 'i-twemoji-flag-china',
     shortCode: '中文',
   },
   'en': {
     code: 'en',
     name: 'English',
-    flag: '🇺🇸',
+    flag: 'i-twemoji-flag-united-states',
     shortCode: 'EN',
   },
   'ja': {
     code: 'ja',
     name: '日本語',
-    flag: '🇯🇵',
+    flag: 'i-twemoji-flag-japan',
     shortCode: '日',
   },
   'ko': {
     code: 'ko',
     name: '한국어',
-    flag: '🇰🇷',
+    flag: 'i-twemoji-flag-south-korea',
     shortCode: '한',
   },
   'de': {
     code: 'de',
     name: 'Deutsch',
-    flag: '🇩🇪',
+    flag: 'i-twemoji-flag-germany',
     shortCode: 'DE',
   },
   'fr': {
     code: 'fr',
     name: 'Français',
-    flag: '🇫🇷',
+    flag: 'i-twemoji-flag-france',
     shortCode: 'FR',
   },
   'es': {
     code: 'es',
     name: 'Español',
-    flag: '🇪🇸',
+    flag: 'i-twemoji-flag-spain',
     shortCode: 'ES',
   },
   'it': {
     code: 'it',
     name: 'Italiano',
-    flag: '🇮🇹',
+    flag: 'i-twemoji-flag-italy',
     shortCode: 'IT',
   },
   'pt': {
     code: 'pt',
     name: 'Português',
-    flag: '🇵🇹',
+    flag: 'i-twemoji-flag-portugal',
     shortCode: 'PT',
   },
 } as const
