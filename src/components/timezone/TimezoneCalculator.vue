@@ -138,7 +138,9 @@ onUnmounted(() => {
 /* Fallback 拖拽元素样式（关键：这个会在 body 上自由移动） */
 :deep(.sortable-fallback) {
   opacity: 0.9 !important;
-  transform: rotate(2deg) !important;
+  /* 注意：Sortable fallback 模式会用 inline `transform: translate3d(...)` 跟随鼠标移动；
+     这里如果用 `transform: ... !important` 会覆盖掉 translate，导致拖拽元素看起来被“锁”在网格里。 */
+  rotate: 2deg;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2) !important;
   cursor: grabbing !important;
   z-index: 9999 !important;
