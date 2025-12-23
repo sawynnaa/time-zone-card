@@ -164,8 +164,9 @@ function handleSliderUpdate(newTime: Dayjs) {
     </div>
 
     <!-- 时差标签（非激活卡片） -->
-    <div v-if="timeDiff" :class="['text-sm mb-3 font-medium', isActive ? 'opacity-70' : 'text-blue-600']">
-      时差: {{ timeDiff }}
+    <div :class="['text-sm mb-3 font-medium', isActive ? 'opacity-70' : 'text-blue-600']">
+      <span v-if="timeDiff">时差: {{ timeDiff }}</span>
+      <span v-else>&nbsp;</span>
     </div>
 
     <!-- 日期和时间显示 -->

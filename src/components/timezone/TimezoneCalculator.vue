@@ -94,18 +94,18 @@ onUnmounted(() => {
         :show-close="cards.length > 1"
         :data-card-id="card.id"
       />
-    </div>
 
-    <!-- 添加卡片按钮 -->
-    <button
-      class="mt-6 w-full border-2 border-dashed border-gray-300 rounded-xl p-8 hover:border-blue-500 hover:bg-blue-50 transition-all duration-300 flex flex-col items-center justify-center gap-3 min-h-[300px] group min-w-[280px]"
-      @click="showAddCitySelector = true"
-    >
-      <div class="i-carbon-add text-6xl text-gray-400 group-hover:text-blue-500 transition-colors" />
-      <span class="text-gray-500 group-hover:text-blue-600 font-medium transition-colors">
-        添加城市
-      </span>
-    </button>
+      <!-- 添加卡片按钮 -->
+      <button
+        class="border-2 border-dashed border-gray-300 rounded-xl p-6 hover:border-blue-500 hover:bg-blue-50 transition-all duration-300 flex flex-col items-center justify-center gap-3 group"
+        @click="showAddCitySelector = true"
+      >
+        <div class="i-carbon-add text-6xl text-gray-400 group-hover:text-blue-500 transition-colors" />
+        <span class="text-gray-500 group-hover:text-blue-600 font-medium transition-colors">
+          添加城市
+        </span>
+      </button>
+    </div>
 
     <!-- 添加城市选择器 -->
     <CitySelector
