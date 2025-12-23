@@ -39,6 +39,7 @@ function initSortable() {
   Sortable.create(cardsContainerRef.value, {
     animation: 300,
     handle: '.drag-handle',
+    draggable: '.timezone-card', // 只允许拖拽带有 timezone-card 类的元素
     ghostClass: 'dragging-ghost',
     chosenClass: 'dragging-chosen',
     dragClass: 'dragging-drag',
@@ -93,6 +94,7 @@ onUnmounted(() => {
         :is-active="card.id === activeCardId"
         :show-close="cards.length > 1"
         :data-card-id="card.id"
+        class="timezone-card"
       />
 
       <!-- 添加卡片按钮 -->
