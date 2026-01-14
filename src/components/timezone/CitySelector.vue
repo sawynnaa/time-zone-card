@@ -3,9 +3,12 @@ import { ref, computed, watch, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { COMMON_CITIES, ALL_TIMEZONES } from '@/data/cities'
 import { useCityTranslation } from '@/composables/useCityTranslation'
+import { formatTimezone } from './composables/useTimezoneFormat'
 
 const { t } = useI18n()
 const { getCityName, getCountryName } = useCityTranslation()
+
+const offsetBaseDate = ref(new Date())
 
 interface Props {
   show: boolean
@@ -30,12 +33,17 @@ watch(
   () => props.show,
   async (isShown) => {
     if (!isShown) return
+    offsetBaseDate.value = new Date()
     await nextTick()
     searchInputRef.value?.focus()
     searchInputRef.value?.select()
   },
   { immediate: true },
 )
+
+function getUtcOffsetText(timeZone: string) {
+  return formatTimezone(timeZone, true, offsetBaseDate.value)
+}
 
 // 过滤后的城市列表（支持搜索翻译后的名称）
 const filteredCities = computed(() => {
@@ -151,10 +159,17 @@ function closeModal() {
                   isCityAdded(city.id) ? 'text-gray-400' : 'text-gray-900 group-hover:text-blue-600',
                 ]"
               >
-                {{ getCityName(city.id) }}
-                <span v-if="isCityAdded(city.id)" class="ml-2 text-xs">
-                  {{ t('citySelector.alreadyAdded') }}
-                </span>
+                <div class="flex items-center gap-2">
+                  <div class="min-w-0">
+                    <span class="truncate">{{ getCityName(city.id) }}</span>
+                    <span v-if="isCityAdded(city.id)" class="ml-2 text-xs">
+                      {{ t('citySelector.alreadyAdded') }}
+                    </span>
+                  </div>
+                  <span class="ml-auto shrink-0 text-xs font-normal text-gray-500 tabular-nums">
+                    {{ getUtcOffsetText(city.timezone) }}
+                  </span>
+                </div>
               </div>
               <div class="text-xs text-gray-500 mt-0.5">
                 {{ getCountryName(city.country) }}
