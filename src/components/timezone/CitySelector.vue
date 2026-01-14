@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { COMMON_CITIES, ALL_TIMEZONES } from '@/data/cities'
 import { useCityTranslation } from '@/composables/useCityTranslation'
@@ -23,7 +23,19 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<Emits>()
 
 const searchQuery = ref('')
+const searchInputRef = ref<HTMLInputElement | null>(null)
 const isMouseDownOutside = ref(false)
+
+watch(
+  () => props.show,
+  async (isShown) => {
+    if (!isShown) return
+    await nextTick()
+    searchInputRef.value?.focus()
+    searchInputRef.value?.select()
+  },
+  { immediate: true },
+)
 
 // 过滤后的城市列表（支持搜索翻译后的名称）
 const filteredCities = computed(() => {
@@ -110,6 +122,7 @@ function closeModal() {
           <!-- 搜索框 -->
           <div class="mb-6">
             <input
+              ref="searchInputRef"
               v-model="searchQuery"
               type="text"
               border="1 solid gray-300 focus:transparent"
