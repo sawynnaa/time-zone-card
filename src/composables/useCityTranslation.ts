@@ -1,6 +1,8 @@
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
   getTimezoneCityDisplayName,
+  getTimezoneDisplayLabel,
   getIanaRegion,
   resolveCountryIso,
   localizeIsoCountry,
@@ -9,28 +11,28 @@ import {
 } from '@/utils/timezone-locale'
 
 /**
- * 城市和国家名称翻译 Composable
- * - 常用城市：优先 i18n 词条
- * - 国家/地区：优先按 ISO 用 Intl.DisplayNames 跟随当前语言
- * - 其余 IANA 时区城市：用 Intl 按当前语言生成显示名
- * - 绝不直接展示数据里的中文硬编码或未翻译英文
+ * 城市 / 国家 / 时区显示名 — 严格跟随当前 UI 语言
  */
 export function useCityTranslation() {
   const { t, te, locale } = useI18n()
 
+  /** 保证模板对 locale 的依赖可追踪 */
+  const currentLocale = computed(() => String(locale.value))
+
   /**
-   * 获取城市名称（跟随当前 UI 语言）
+   * 城市名称
    */
   function getCityName(cityId: string, _fallback?: string, timezone?: string): string {
+    // 依赖 locale，切换语言时强制重算
+    const loc = currentLocale.value
     const key = `cities.${cityId}`
+
     if (te(key))
       return t(key)
 
-    // 无显式词条时，用 Intl 按当前 UI 语言生成本地化名称
     if (timezone)
-      return getTimezoneCityDisplayName(timezone, String(locale.value))
+      return getTimezoneCityDisplayName(timezone, loc)
 
-    // 最后回退：格式化 id（避免使用可能是中文的 fallback）
     return cityId
       .replace(/^(africa|america|antarctica|arctic|asia|atlantic|australia|europe|indian|pacific|etc)-/i, '')
       .replace(/[_-]/g, ' ')
@@ -38,17 +40,14 @@ export function useCityTranslation() {
   }
 
   /**
-   * 获取国家/地区名称（严格跟随当前 UI 语言）
-   * @param country 数据中的国家字段（ISO / 遗留中文 / i18n 键 / IANA 区域）
-   * @param timezone 可选 IANA 时区，用于更准确的国家解析
+   * 国家 / 地区名称（严格本地化）
    */
   function getCountryName(country: string, timezone?: string): string {
-    const currentLocale = String(locale.value)
+    const loc = currentLocale.value
 
-    // 1) 解析 ISO，用 i18n 特殊词条或 DisplayNames
+    // 1) ISO → i18n 特殊词条或 DisplayNames
     const iso = resolveCountryIso(country, timezone)
     if (iso) {
-      // 特殊文案（如台湾 → 中国台湾）优先走项目 i18n
       const i18nKey = ISO_TO_I18N_COUNTRY_KEY[iso]
       if (i18nKey) {
         const key = `countries.${i18nKey}`
@@ -56,13 +55,13 @@ export function useCityTranslation() {
           return t(key)
       }
 
-      const localized = localizeIsoCountry(iso, currentLocale)
+      const localized = localizeIsoCountry(iso, loc)
       if (localized)
         return localized
     }
 
-    // 2) IANA 大区（America/Asia/...）→ regions.*
-    const regionName = country && IANA_REGION_KEYS[country]
+    // 2) IANA 大区 → regions.*
+    const regionName = (country && IANA_REGION_KEYS[country])
       ? country
       : (timezone ? getIanaRegion(timezone) : undefined)
 
@@ -82,12 +81,21 @@ export function useCityTranslation() {
         return t(key)
     }
 
-    // 4) 兜底：不再原样返回中文硬编码；显示未知
     return t('card.unknownCountry')
+  }
+
+  /**
+   * 时区本地化名称（非 IANA 技术 ID）
+   * 例：America/New_York → 纽约 / New York / ニューヨーク
+   */
+  function getTimezoneLabel(timezone: string): string {
+    return getTimezoneDisplayLabel(timezone, currentLocale.value)
   }
 
   return {
     getCityName,
     getCountryName,
+    getTimezoneLabel,
+    currentLocale,
   }
 }

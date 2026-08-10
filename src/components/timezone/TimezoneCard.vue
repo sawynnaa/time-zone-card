@@ -11,7 +11,7 @@ import { getTimeDifference, formatTimeDifference } from './composables/useTimeDi
 import CardTimelineSlider from './CardTimelineSlider.vue'
 import CitySelector from './CitySelector.vue'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const { getCityName, getCountryName } = useCityTranslation()
 
 interface Props {
@@ -33,14 +33,33 @@ const showClose = computed(() => cards.value.length > 1)
 
 // 已添加的城市 ID 列表（排除当前卡片）
 const filteredExistingCityIds = computed(() => {
-  if (!card.value) return existingCityIds.value
+  if (!card.value)
+    return existingCityIds.value
   return existingCityIds.value.filter(id => id !== card.value!.cityId)
 })
 
 // 获取城市信息
 const city = computed(() => {
-  if (!card.value) return null
+  if (!card.value)
+    return null
   return getCityById(card.value.cityId)
+})
+
+// 跟随语言的城市 / 国家显示名
+const displayCityLabel = computed(() => {
+  void locale.value
+  const c = city.value
+  if (!c)
+    return t('card.unknownCity')
+  return getCityName(c.id, c.city, c.timezone)
+})
+
+const displayCountryLabel = computed(() => {
+  void locale.value
+  const c = city.value
+  if (!c)
+    return t('card.unknownCountry')
+  return getCountryName(c.country, c.timezone)
 })
 
 // 计算该卡片时区的时间
@@ -115,10 +134,10 @@ function handleCitySelect(cityId: string) {
     <div class="flex justify-between items-start mb-4">
       <div class="flex-1">
         <h3 class="text-2xl font-bold">
-          {{ city ? getCityName(city.id, city.city, city.timezone) : t('card.unknownCity') }}
+          {{ displayCityLabel }}
         </h3>
         <p :class="['text-sm mt-1', isActive ? 'opacity-70' : 'opacity-60']">
-          {{ city ? getCountryName(city.country, city.timezone) : t('card.unknownCountry') }}
+          {{ displayCountryLabel }}
         </p>
         <p :class="['text-xs mt-1', isActive ? 'opacity-50' : 'opacity-40']">
           {{ city ? formatTimezone(city.timezone, timeFormat.isUTC) : '' }}

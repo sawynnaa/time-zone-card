@@ -13,8 +13,8 @@ import { useCityTranslation } from '@/composables/useCityTranslation'
 import { formatTimezone } from './composables/useTimezoneFormat'
 import { dayjs } from '@/utils/timezone-helpers'
 
-const { t } = useI18n()
-const { getCityName, getCountryName } = useCityTranslation()
+const { t, locale } = useI18n()
+const { getCityName, getCountryName, getTimezoneLabel } = useCityTranslation()
 
 const offsetBaseDate = ref(new Date())
 
@@ -65,7 +65,19 @@ function getUtcOffsetText(timeZone: string) {
 }
 
 function displayCityName(city: TimezoneCity) {
+  // 显式依赖 locale，确保切换语言时模板重算
+  void locale.value
   return getCityName(city.id, city.city, city.timezone)
+}
+
+function displayCountryName(country: string, timezone: string) {
+  void locale.value
+  return getCountryName(country, timezone)
+}
+
+function displayTimezoneLabel(timezone: string) {
+  void locale.value
+  return getTimezoneLabel(timezone)
 }
 
 // 过滤后的城市列表（支持搜索翻译后的名称）
@@ -78,13 +90,15 @@ const filteredCities = computed(() => {
 
   return ALL_TIMEZONES.filter((city) => {
     const translatedCity = displayCityName(city).toLowerCase()
-    const translatedCountry = getCountryName(city.country, city.timezone).toLowerCase()
+    const translatedCountry = displayCountryName(city.country, city.timezone).toLowerCase()
     const timezone = city.timezone.toLowerCase()
+    const tzLabel = displayTimezoneLabel(city.timezone).toLowerCase()
 
     return (
       translatedCity.includes(query)
       || translatedCountry.includes(query)
       || timezone.includes(query)
+      || tzLabel.includes(query)
       || city.city.toLowerCase().includes(query)
       || city.country.toLowerCase().includes(query)
     )
@@ -93,20 +107,24 @@ const filteredCities = computed(() => {
 
 // 按 IANA 时区聚合（参考全部时区列表页）
 const timezoneZones = computed((): TimezoneZoneEntry[] => {
+  // 依赖 locale，切换语言后列表展示名一并刷新
+  void locale.value
   let cities = ALL_TIMEZONES
 
   if (searchQuery.value.trim()) {
     const query = searchQuery.value.toLowerCase().trim()
     cities = ALL_TIMEZONES.filter((city) => {
       const translatedCity = displayCityName(city).toLowerCase()
-      const translatedCountry = getCountryName(city.country, city.timezone).toLowerCase()
+      const translatedCountry = displayCountryName(city.country, city.timezone).toLowerCase()
       const timezone = city.timezone.toLowerCase()
+      const tzLabel = displayTimezoneLabel(city.timezone).toLowerCase()
       const offsetLabel = getUtcOffsetText(city.timezone).toLowerCase()
 
       return (
         translatedCity.includes(query)
         || translatedCountry.includes(query)
         || timezone.includes(query)
+        || tzLabel.includes(query)
         || city.city.toLowerCase().includes(query)
         || city.country.toLowerCase().includes(query)
         || offsetLabel.includes(query)
@@ -293,7 +311,7 @@ function closeModal() {
                   </div>
                 </div>
                 <div class="text-xs text-gray-500 mt-0.5">
-                  {{ getCountryName(city.country, city.timezone) }}
+                  {{ displayCountryName(city.country, city.timezone) }}
                 </div>
               </button>
             </div>
@@ -369,22 +387,25 @@ function closeModal() {
                     </div>
                   </div>
 
-                  <!-- 时区 + 国家 -->
+                  <!-- 时区（本地化名称） + 国家（本地化） + IANA 技术 ID -->
                   <div class="min-w-0">
-                    <div class="font-mono text-sm text-gray-900 break-all leading-snug">
-                      {{ zone.timezone }}
+                    <div class="text-sm font-semibold text-gray-900 truncate leading-snug">
+                      {{ displayCityName(zone.primaryCity) }}
                     </div>
-                    <div class="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                    <div class="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
                       <span class="i-carbon-earth shrink-0 opacity-60" />
-                      <span class="truncate">{{ getCountryName(zone.country, zone.timezone) }}</span>
+                      <span class="truncate">{{ displayCountryName(zone.country, zone.timezone) }}</span>
+                    </div>
+                    <div class="text-[11px] text-gray-400 mt-0.5 font-mono truncate" :title="zone.timezone">
+                      {{ zone.timezone }}
                     </div>
                   </div>
 
-                  <!-- 主要城市（可点选添加） -->
+                  <!-- 主要城市（可点选添加，名称跟随语言） -->
                   <div class="flex flex-wrap gap-1.5 min-w-0 content-start">
                     <button
                       v-for="city in zone.cities"
-                      :key="city.id"
+                      :key="`${city.id}-${locale}`"
                       type="button"
                       :disabled="isCityAdded(city.id)"
                       :title="isCityAdded(city.id) ? t('citySelector.alreadyAdded') : t('citySelector.addThisCity')"
@@ -457,12 +478,15 @@ function closeModal() {
                   </div>
 
                   <div>
-                    <div class="font-mono text-sm text-gray-900 break-all">
-                      {{ zone.timezone }}
+                    <div class="text-sm font-semibold text-gray-900">
+                      {{ displayCityName(zone.primaryCity) }}
                     </div>
                     <div class="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
                       <span class="i-carbon-earth shrink-0 opacity-60" />
-                      {{ getCountryName(zone.country, zone.timezone) }}
+                      {{ displayCountryName(zone.country, zone.timezone) }}
+                    </div>
+                    <div class="text-[11px] text-gray-400 mt-0.5 font-mono break-all">
+                      {{ zone.timezone }}
                     </div>
                   </div>
 
@@ -473,7 +497,7 @@ function closeModal() {
                     <div class="flex flex-wrap gap-1.5">
                       <button
                         v-for="city in zone.cities"
-                        :key="city.id"
+                        :key="`${city.id}-${locale}`"
                         type="button"
                         :disabled="isCityAdded(city.id)"
                         :class="[
