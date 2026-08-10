@@ -28,14 +28,13 @@ export function getTimeDifference(
 }
 
 /**
- * 格式化时差显示（中文）
+ * 格式化时差显示（统一英文单位，便于多语言 UI 一致）
  * @param diffMinutes 时差（分钟）
- * @returns 格式化的时差字符串，例如 "+3小时", "-5.5小时", "+30分钟"
+ * @returns 例如 "0h", "+3h", "+5.5h", "+30m"
  */
 export function formatTimeDifference(diffMinutes: number): string {
-  if (diffMinutes === 0) {
+  if (diffMinutes === 0)
     return '0h'
-  }
 
   const sign = diffMinutes > 0 ? '+' : '-'
   const absDiff = Math.abs(diffMinutes)
@@ -43,28 +42,25 @@ export function formatTimeDifference(diffMinutes: number): string {
   const hours = Math.floor(absDiff / 60)
   const minutes = absDiff % 60
 
-  if (hours === 0) {
-    return `${sign}${minutes}min`
-  }
+  if (hours === 0)
+    return `${sign}${minutes}m`
 
-  if (minutes === 0) {
+  if (minutes === 0)
     return `${sign}${hours}h`
-  }
 
-  // 如果有小数小时（如 5.5 小时）
+  // 非整小时（如 +5.5h）
   const decimalHours = absDiff / 60
-  return `${sign}${decimalHours.toFixed(1)}小时`
+  return `${sign}${parseFloat(decimalHours.toFixed(2))}h`
 }
 
 /**
- * 获取简洁的时差显示（仅数字）
+ * 获取简洁的时差显示（仅数字小时）
  * @param diffMinutes 时差（分钟）
- * @returns 简洁的时差字符串，例如 "+3h", "-5.5h"
+ * @returns 例如 "+3h", "-5.5h"
  */
 export function formatTimeDifferenceShort(diffMinutes: number): string {
-  if (diffMinutes === 0) {
+  if (diffMinutes === 0)
     return '0h'
-  }
 
   const sign = diffMinutes > 0 ? '+' : '-'
   const absDiff = Math.abs(diffMinutes)

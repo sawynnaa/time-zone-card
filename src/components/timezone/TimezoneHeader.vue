@@ -12,7 +12,6 @@ const timezoneStore = useTimezoneStore()
 const {
   currentTime,
   isPreviewMode,
-  cards,
   timeFormat,
 } = storeToRefs(timezoneStore)
 
@@ -22,8 +21,8 @@ const {
   toggleUTCLabel,
 } = timezoneStore
 
-// 显示重置按钮的条件
-const showResetButton = computed(() => isPreviewMode.value && cards.value.length > 1)
+// 只要处于预览模式就显示重置（与卡片数量无关）
+const showResetButton = computed(() => isPreviewMode.value)
 
 // 获取当前时区的时间（显示用户本地时区的当前时间）
 const currentLocalTime = computed(() => {

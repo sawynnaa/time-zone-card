@@ -1,5 +1,5 @@
 import presetWind3 from '@unocss/preset-wind3'
-import { defineConfig,presetAttributify, presetIcons, transformerVariantGroup } from 'unocss'
+import { defineConfig, presetAttributify, presetIcons, transformerVariantGroup } from 'unocss'
 
 export default defineConfig({
   presets: [
@@ -7,9 +7,8 @@ export default defineConfig({
     presetAttributify(),
     presetIcons({
       extraProperties: {
-                'display': 'inline-block',
+        display: 'inline-block',
         'vertical-align': 'middle',
-      // ...
       },
     }),
   ],

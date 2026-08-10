@@ -31,9 +31,6 @@ const isActive = computed(() => card.value?.id === activeCard.value?.id)
 
 const showClose = computed(() => cards.value.length > 1)
 
-// 控制是否正在拖拽
-const isDragging = ref(false)
-
 // 已添加的城市 ID 列表（排除当前卡片）
 const filteredExistingCityIds = computed(() => {
   if (!card.value) return existingCityIds.value
@@ -71,27 +68,11 @@ const timeDiff = computed(() => {
   return formatTimeDifference(diffMinutes)
 })
 
-// 切换激活状态
-function toggleActive() {
-  if (!isActive.value && !isDragging.value && card.value) {
+// 点击卡片主体时激活（按钮区需 stop 冒泡，避免误触）
+function handleCardActivate() {
+  if (!isActive.value && card.value) {
     setActiveCard(card.value.id)
   }
-}
-
-// 处理 mousedown 事件
-function handleMouseDown() {
-  isDragging.value = false
-
-  setTimeout(() => {
-    if (!isDragging.value) {
-      toggleActive()
-    }
-  }, 100)
-}
-
-// 拖拽开始时设置拖拽标志
-function handleDragStart() {
-  isDragging.value = true
 }
 
 // 删除卡片
@@ -121,12 +102,13 @@ function handleCitySelect(cityId: string) {
 <template>
   <div
     :class="[
-      'rounded-xl p-6 transition-all duration-300 select-none h-[300px]',
+      // 不要用 transition-all：会过渡 transform，与 Sortable 排序动画冲突导致卡顿
+      'rounded-xl p-6 select-none h-[300px] transition-[background-color,color,box-shadow,border-color] duration-300',
       isActive
         ? 'bg-gray-900 text-white shadow-2xl '
-        : 'bg-white text-gray-900 shadow-md hover:shadow-lg border border-gray-200',
+        : 'bg-white text-gray-900 shadow-md hover:shadow-lg border border-gray-200 cursor-pointer',
     ]"
-    @mousedown="handleMouseDown"
+    @click="handleCardActivate"
   >
     <!-- 头部：城市信息 + 按钮 -->
     <div class="flex justify-between items-start mb-4">
@@ -142,13 +124,12 @@ function handleCitySelect(cityId: string) {
         </p>
       </div>
 
-      <!-- 按钮组 -->
-      <div class="flex gap-2" @click.stop>
+      <!-- 按钮组：阻止 mousedown/click 冒泡，避免误激活或与拖拽冲突 -->
+      <div class="flex gap-2" @click.stop @mousedown.stop>
         <!-- 拖拽手柄按钮 -->
         <div
           class="drag-handle cursor-grab active:cursor-grabbing text-xl transition-colors duration-200"
           :class="isActive ? 'text-white hover:text-blue-300' : 'text-gray-400 hover:text-blue-500'"
-          @mousedown.stop="handleDragStart"
           :title="t('card.dragToSort')"
         >
           <div class="i-carbon-draggable" />
@@ -158,8 +139,8 @@ function handleCitySelect(cityId: string) {
         <div
           class="cursor-pointer text-xl transition-colors duration-200"
           :class="isActive ? 'text-white hover:text-blue-300' : 'text-gray-600 hover:text-blue-500'"
-          @click="handleEditCity"
           :title="t('card.editCity')"
+          @click="handleEditCity"
         >
           <div class="i-carbon-edit" />
         </div>
@@ -169,8 +150,8 @@ function handleCitySelect(cityId: string) {
           v-if="showClose"
           class="cursor-pointer text-xl transition-colors duration-200"
           :class="isActive ? 'text-white hover:text-red-300' : 'text-gray-600 hover:text-red-500'"
-          @click="handleRemove"
           :title="t('card.deleteCard')"
+          @click="handleRemove"
         >
           <div class="i-carbon-close" />
         </div>

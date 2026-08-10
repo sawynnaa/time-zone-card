@@ -346,10 +346,13 @@ input[type='range']::-moz-range-thumb {
   cursor: not-allowed;
 }
 
-/* SortableJS fallback 元素的全局样式 */
+/* SortableJS fallback 元素的全局样式
+   注意：不能使用 transform（尤其是 !important），否则会覆盖 Sortable
+   用于跟随鼠标的 inline translate3d，导致拖拽元素“锁死”在原位。
+   旋转请使用 rotate 属性，见 TimezoneCalculator.vue */
 body > .sortable-fallback {
   opacity: 0.9 !important;
-  transform: rotate(2deg) !important;
+  rotate: 2deg;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2) !important;
   cursor: grabbing !important;
   z-index: 9999 !important;
