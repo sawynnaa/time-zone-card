@@ -346,14 +346,27 @@ input[type='range']::-moz-range-thumb {
   cursor: not-allowed;
 }
 
-/* SortableJS fallback 元素的全局样式
-   注意：不能使用 transform（尤其是 !important），否则会覆盖 Sortable
-   用于跟随鼠标的 inline translate3d，导致拖拽元素“锁死”在原位。
-   旋转请使用 rotate 属性，见 TimezoneCalculator.vue */
+/* SortableJS fallback（挂在 body 上，组件 scoped 盖不全）
+   - 禁止 transform/rotate：会盖住 Sortable 的 translate3d 跟手
+   - 禁止 transition：松手销毁克隆时不要再缓动，瞬时消失贴位 */
+body > .sortable-fallback,
+body > .sortable-fallback * {
+  transition: none !important;
+  animation: none !important;
+}
+
 body > .sortable-fallback {
-  opacity: 0.9 !important;
-  rotate: 2deg;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2) !important;
+  opacity: 0.96 !important;
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.18) !important;
   cursor: grabbing !important;
   z-index: 9999 !important;
+  pointer-events: none !important;
+}
+
+/* 排序中全局锁 transition，避免 scoped 穿透失败时松手仍被 duration-300 拖住 */
+.is-sorting .timezone-card,
+.is-sorting .timezone-card *,
+.is-sorting .add-city-btn {
+  transition: none !important;
+  animation: none !important;
 }

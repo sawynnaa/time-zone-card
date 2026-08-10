@@ -102,8 +102,9 @@ function handleCitySelect(cityId: string) {
 <template>
   <div
     :class="[
-      // 不要用 transition-all：会过渡 transform，与 Sortable 排序动画冲突导致卡顿
-      'rounded-xl p-6 select-none h-[300px] transition-[background-color,color,box-shadow,border-color] duration-300',
+      // 不要用 transition-all / 不要过渡 transform：Sortable 松手贴位时会叠成「回正很慢」
+      // 主题色/阴影过渡缩短，避免和拖拽结束叠成接近 1s 的卡顿感
+      'rounded-xl p-6 select-none h-[300px] transition-[background-color,color,box-shadow,border-color] duration-150',
       isActive
         ? 'bg-gray-900 text-white shadow-2xl '
         : 'bg-white text-gray-900 shadow-md hover:shadow-lg border border-gray-200 cursor-pointer',
