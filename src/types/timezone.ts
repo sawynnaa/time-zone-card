@@ -3,8 +3,10 @@ import type { Dayjs } from 'dayjs'
 // 时区城市数据结构
 export interface TimezoneCity {
   id: string // 唯一标识符
-  city: string // 城市名（中文）
-  country: string // 国家名（中文）
+  /** 规范城市名（英文，仅作数据/搜索后备；UI 显示走 i18n / Intl） */
+  city: string
+  /** ISO 3166-1 alpha-2 国家代码，或 IANA 区域段（America/Asia/...） */
+  country: string
   timezone: string // IANA 时区标识（例如：'Asia/Shanghai'）
   offset: number // UTC 偏移量（分钟）用于排序
   commonCity: boolean // 是否为常用城市

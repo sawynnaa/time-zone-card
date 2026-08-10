@@ -23,10 +23,9 @@ let settleRafId = 0
 // 城市选择器状态
 const showAddCitySelector = ref(false)
 
-// 添加新卡片
+// 添加新卡片（保持选择器打开，便于按时区连续添加）
 function handleAddCard(cityId: string) {
   addCard(cityId)
-  showAddCitySelector.value = false
 }
 
 /**
@@ -202,6 +201,7 @@ onUnmounted(() => {
     <CitySelector
       :show="showAddCitySelector"
       :existing-city-ids="existingCityIds"
+      keep-open-on-select
       @select="handleAddCard"
       @close="showAddCitySelector = false"
     />

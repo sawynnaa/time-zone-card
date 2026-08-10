@@ -1,89 +1,234 @@
 import type { TimezoneCity } from '@/types/timezone'
+import { getTimezoneOffset } from '@/utils/timezone-helpers'
+import { getTimezoneCountryCode } from '@/data/timezone-countries'
+import { getIanaCityFallback } from '@/utils/timezone-locale'
 
-// 常用城市列表（包含夏令时代表城市）
+/** 按 UTC 偏移量分组后的时区城市列表 */
+export interface OffsetGroup {
+  offsetMinutes: number
+  label: string
+  cities: TimezoneCity[]
+}
+
+/**
+ * 按 IANA 时区聚合后的条目（参考 zeitverschiebung 全部时区列表）
+ * 一列：协调世界时 + 本地时间；一列：时区 + 国家；一列：主要城市
+ */
+export interface TimezoneZoneEntry {
+  timezone: string
+  offsetMinutes: number
+  offsetLabel: string
+  /** 代表国家/区域（优先常用城市的国家名） */
+  country: string
+  cities: TimezoneCity[]
+  /** 默认用于「按时区添加」的代表城市 */
+  primaryCity: TimezoneCity
+}
+
+/** 将分钟偏移格式化为 UTC±N / UTC±N:MM */
+export function formatOffsetLabel(offsetMinutes: number, prefix = 'UTC'): string {
+  const hours = Math.floor(Math.abs(offsetMinutes) / 60)
+  const minutes = Math.abs(offsetMinutes) % 60
+  const sign = offsetMinutes >= 0 ? '+' : '-'
+  if (minutes === 0)
+    return `${prefix}${sign}${hours}`
+  return `${prefix}${sign}${hours}:${minutes.toString().padStart(2, '0')}`
+}
+
+function sortCitiesInZone(a: TimezoneCity, b: TimezoneCity): number {
+  if (a.commonCity !== b.commonCity)
+    return a.commonCity ? -1 : 1
+  return a.city.localeCompare(b.city, 'en')
+}
+
+/**
+ * 按当前（或指定日期）UTC 偏移量对城市分组，从西到东排序（约 UTC-11 … UTC+14）
+ */
+export function groupCitiesByOffset(cities: TimezoneCity[], date?: Date): OffsetGroup[] {
+  const map = new Map<number, TimezoneCity[]>()
+
+  for (const city of cities) {
+    const offset = getTimezoneOffset(city.timezone, date)
+    const list = map.get(offset)
+    if (list) {
+      list.push(city)
+    }
+    else {
+      map.set(offset, [city])
+    }
+  }
+
+  const sortedOffsets = [...map.keys()].sort((a, b) => a - b)
+
+  return sortedOffsets.map((offset) => {
+    const groupCities = [...(map.get(offset) ?? [])]
+    groupCities.sort(sortCitiesInZone)
+    return {
+      offsetMinutes: offset,
+      label: formatOffsetLabel(offset),
+      cities: groupCities,
+    }
+  })
+}
+
+/**
+ * 按 IANA 时区聚合城市，按当前 UTC 偏移从西到东排序。
+ * 同一时区下的多个城市（如 北京/上海）会出现在「主要城市」列。
+ */
+export function groupByIanaTimezone(cities: TimezoneCity[], date?: Date): TimezoneZoneEntry[] {
+  const map = new Map<string, TimezoneCity[]>()
+
+  for (const city of cities) {
+    const list = map.get(city.timezone)
+    if (list) {
+      list.push(city)
+    }
+    else {
+      map.set(city.timezone, [city])
+    }
+  }
+
+  const entries: TimezoneZoneEntry[] = []
+
+  for (const [timezone, zoneCities] of map) {
+    const sorted = [...zoneCities].sort(sortCitiesInZone)
+    const primaryCity = sorted[0]!
+    const countryCity = sorted.find(c => c.commonCity) ?? primaryCity
+    const offsetMinutes = getTimezoneOffset(timezone, date)
+
+    entries.push({
+      timezone,
+      offsetMinutes,
+      offsetLabel: formatOffsetLabel(offsetMinutes),
+      // 优先 ISO 国家代码，保证展示层可用 Intl 按语言本地化
+      country: getTimezoneCountryCode(timezone) || countryCity.country,
+      cities: sorted,
+      primaryCity,
+    })
+  }
+
+  entries.sort((a, b) => {
+    if (a.offsetMinutes !== b.offsetMinutes)
+      return a.offsetMinutes - b.offsetMinutes
+    return a.timezone.localeCompare(b.timezone)
+  })
+
+  return entries
+}
+
+/** 从时区条目列表提取偏移快捷导航（去重，保持顺序） */
+export function getOffsetNavFromZones(zones: TimezoneZoneEntry[]): Array<{
+  offsetMinutes: number
+  label: string
+  count: number
+}> {
+  const map = new Map<number, { label: string, count: number }>()
+  for (const zone of zones) {
+    const existing = map.get(zone.offsetMinutes)
+    if (existing) {
+      existing.count += 1
+    }
+    else {
+      map.set(zone.offsetMinutes, { label: zone.offsetLabel, count: 1 })
+    }
+  }
+  return [...map.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([offsetMinutes, { label, count }]) => ({ offsetMinutes, label, count }))
+}
+
+// 常用城市列表（country 使用 ISO 代码；city 使用英文规范名，UI 显示走 i18n/Intl）
 export const COMMON_CITIES: TimezoneCity[] = [
-  // 中国
-  { id: 'beijing', city: '北京', country: '中国', timezone: 'Asia/Shanghai', offset: 480, commonCity: true },
-  { id: 'shanghai', city: '上海', country: '中国', timezone: 'Asia/Shanghai', offset: 480, commonCity: true },
-  { id: 'hongkong', city: '香港', country: '中国', timezone: 'Asia/Hong_Kong', offset: 480, commonCity: true },
-  { id: 'taipei', city: '台北', country: '中国台湾', timezone: 'Asia/Taipei', offset: 480, commonCity: true },
+  // China
+  { id: 'beijing', city: 'Beijing', country: 'CN', timezone: 'Asia/Shanghai', offset: 480, commonCity: true },
+  { id: 'shanghai', city: 'Shanghai', country: 'CN', timezone: 'Asia/Shanghai', offset: 480, commonCity: true },
+  { id: 'hongkong', city: 'Hong Kong', country: 'HK', timezone: 'Asia/Hong_Kong', offset: 480, commonCity: true },
+  { id: 'taipei', city: 'Taipei', country: 'TW', timezone: 'Asia/Taipei', offset: 480, commonCity: true },
 
-  // 亚洲其他
-  { id: 'tokyo', city: '东京', country: '日本', timezone: 'Asia/Tokyo', offset: 540, commonCity: true },
-  { id: 'seoul', city: '首尔', country: '韩国', timezone: 'Asia/Seoul', offset: 540, commonCity: true },
-  { id: 'singapore', city: '新加坡', country: '新加坡', timezone: 'Asia/Singapore', offset: 480, commonCity: true },
-  { id: 'bangkok', city: '曼谷', country: '泰国', timezone: 'Asia/Bangkok', offset: 420, commonCity: true },
-  { id: 'dubai', city: '迪拜', country: '阿联酋', timezone: 'Asia/Dubai', offset: 240, commonCity: true },
-  { id: 'mumbai', city: '孟买', country: '印度', timezone: 'Asia/Kolkata', offset: 330, commonCity: true },
+  // Asia
+  { id: 'tokyo', city: 'Tokyo', country: 'JP', timezone: 'Asia/Tokyo', offset: 540, commonCity: true },
+  { id: 'seoul', city: 'Seoul', country: 'KR', timezone: 'Asia/Seoul', offset: 540, commonCity: true },
+  { id: 'singapore', city: 'Singapore', country: 'SG', timezone: 'Asia/Singapore', offset: 480, commonCity: true },
+  { id: 'bangkok', city: 'Bangkok', country: 'TH', timezone: 'Asia/Bangkok', offset: 420, commonCity: true },
+  { id: 'dubai', city: 'Dubai', country: 'AE', timezone: 'Asia/Dubai', offset: 240, commonCity: true },
+  { id: 'mumbai', city: 'Mumbai', country: 'IN', timezone: 'Asia/Kolkata', offset: 330, commonCity: true },
 
-  // 大洋洲
-  { id: 'sydney', city: '悉尼', country: '澳大利亚', timezone: 'Australia/Sydney', offset: 660, commonCity: true },
-  { id: 'melbourne', city: '墨尔本', country: '澳大利亚', timezone: 'Australia/Melbourne', offset: 660, commonCity: true },
-  { id: 'auckland', city: '奥克兰', country: '新西兰', timezone: 'Pacific/Auckland', offset: 780, commonCity: true },
+  // Oceania
+  { id: 'sydney', city: 'Sydney', country: 'AU', timezone: 'Australia/Sydney', offset: 660, commonCity: true },
+  { id: 'melbourne', city: 'Melbourne', country: 'AU', timezone: 'Australia/Melbourne', offset: 660, commonCity: true },
+  { id: 'auckland', city: 'Auckland', country: 'NZ', timezone: 'Pacific/Auckland', offset: 780, commonCity: true },
 
-  // 欧洲
-  { id: 'london', city: '伦敦', country: '英国', timezone: 'Europe/London', offset: 0, commonCity: true },
-  { id: 'paris', city: '巴黎', country: '法国', timezone: 'Europe/Paris', offset: 60, commonCity: true },
-  { id: 'berlin', city: '柏林', country: '德国', timezone: 'Europe/Berlin', offset: 60, commonCity: true },
-  { id: 'rome', city: '罗马', country: '意大利', timezone: 'Europe/Rome', offset: 60, commonCity: true },
-  { id: 'madrid', city: '马德里', country: '西班牙', timezone: 'Europe/Madrid', offset: 60, commonCity: true },
-  { id: 'moscow', city: '莫斯科', country: '俄罗斯', timezone: 'Europe/Moscow', offset: 180, commonCity: true },
-  { id: 'amsterdam', city: '阿姆斯特丹', country: '荷兰', timezone: 'Europe/Amsterdam', offset: 60, commonCity: true },
+  // Europe
+  { id: 'london', city: 'London', country: 'GB', timezone: 'Europe/London', offset: 0, commonCity: true },
+  { id: 'paris', city: 'Paris', country: 'FR', timezone: 'Europe/Paris', offset: 60, commonCity: true },
+  { id: 'berlin', city: 'Berlin', country: 'DE', timezone: 'Europe/Berlin', offset: 60, commonCity: true },
+  { id: 'rome', city: 'Rome', country: 'IT', timezone: 'Europe/Rome', offset: 60, commonCity: true },
+  { id: 'madrid', city: 'Madrid', country: 'ES', timezone: 'Europe/Madrid', offset: 60, commonCity: true },
+  { id: 'moscow', city: 'Moscow', country: 'RU', timezone: 'Europe/Moscow', offset: 180, commonCity: true },
+  { id: 'amsterdam', city: 'Amsterdam', country: 'NL', timezone: 'Europe/Amsterdam', offset: 60, commonCity: true },
 
-  // 美洲
-  { id: 'newyork', city: '纽约', country: '美国', timezone: 'America/New_York', offset: -300, commonCity: true },
-  { id: 'losangeles', city: '洛杉矶', country: '美国', timezone: 'America/Los_Angeles', offset: -480, commonCity: true },
-  { id: 'chicago', city: '芝加哥', country: '美国', timezone: 'America/Chicago', offset: -360, commonCity: true },
-  { id: 'denver', city: '丹佛', country: '美国', timezone: 'America/Denver', offset: -420, commonCity: true },
-  { id: 'toronto', city: '多伦多', country: '加拿大', timezone: 'America/Toronto', offset: -300, commonCity: true },
-  { id: 'vancouver', city: '温哥华', country: '加拿大', timezone: 'America/Vancouver', offset: -480, commonCity: true },
-  { id: 'mexico_city', city: '墨西哥城', country: '墨西哥', timezone: 'America/Mexico_City', offset: -360, commonCity: true },
-  { id: 'sao_paulo', city: '圣保罗', country: '巴西', timezone: 'America/Sao_Paulo', offset: -180, commonCity: true },
-  { id: 'buenos_aires', city: '布宜诺斯艾利斯', country: '阿根廷', timezone: 'America/Argentina/Buenos_Aires', offset: -180, commonCity: true },
+  // Americas
+  { id: 'newyork', city: 'New York', country: 'US', timezone: 'America/New_York', offset: -300, commonCity: true },
+  { id: 'losangeles', city: 'Los Angeles', country: 'US', timezone: 'America/Los_Angeles', offset: -480, commonCity: true },
+  { id: 'chicago', city: 'Chicago', country: 'US', timezone: 'America/Chicago', offset: -360, commonCity: true },
+  { id: 'denver', city: 'Denver', country: 'US', timezone: 'America/Denver', offset: -420, commonCity: true },
+  { id: 'toronto', city: 'Toronto', country: 'CA', timezone: 'America/Toronto', offset: -300, commonCity: true },
+  { id: 'vancouver', city: 'Vancouver', country: 'CA', timezone: 'America/Vancouver', offset: -480, commonCity: true },
+  { id: 'mexico_city', city: 'Mexico City', country: 'MX', timezone: 'America/Mexico_City', offset: -360, commonCity: true },
+  { id: 'sao_paulo', city: 'São Paulo', country: 'BR', timezone: 'America/Sao_Paulo', offset: -180, commonCity: true },
+  { id: 'buenos_aires', city: 'Buenos Aires', country: 'AR', timezone: 'America/Argentina/Buenos_Aires', offset: -180, commonCity: true },
 
-  // 非洲
-  { id: 'cairo', city: '开罗', country: '埃及', timezone: 'Africa/Cairo', offset: 120, commonCity: true },
-  { id: 'johannesburg', city: '约翰内斯堡', country: '南非', timezone: 'Africa/Johannesburg', offset: 120, commonCity: true },
+  // Africa
+  { id: 'cairo', city: 'Cairo', country: 'EG', timezone: 'Africa/Cairo', offset: 120, commonCity: true },
+  { id: 'johannesburg', city: 'Johannesburg', country: 'ZA', timezone: 'Africa/Johannesburg', offset: 120, commonCity: true },
 ]
 
 // 默认显示的城市ID列表
 export const DEFAULT_CARD_CITIES = ['beijing', 'tokyo', 'newyork', 'london']
 
+/** 解析时区对应的 country 字段：优先 ISO，否则 IANA 区域段 */
+function resolveCountryField(timezone: string): string {
+  return getTimezoneCountryCode(timezone) || timezone.split('/')[0] || 'Etc'
+}
+
 // 获取所有IANA时区并转换为城市数据（用于搜索功能）
 export const ALL_TIMEZONES: TimezoneCity[] = (() => {
   try {
-    // 首先包含所有常用城市
     const allCities = [...COMMON_CITIES]
-
-    // 获取所有IANA时区
     const allIanaTimezones = (Intl as any).supportedValuesOf('timeZone') as string[]
-
-    // 将IANA时区转换为城市数据（排除已存在的常用城市）
     const existingTimezones = new Set(COMMON_CITIES.map(c => c.timezone))
 
-    allIanaTimezones.forEach((tz: string) => {
-      if (!existingTimezones.has(tz)) {
-        const parts = tz.split('/')
-        const cityName = parts[parts.length - 1]
-        const country = parts[0]
+    // 兼容浏览器使用的别名（如 America/Buenos_Aires ↔ America/Argentina/Buenos_Aires）
+    const aliasOccupied = new Set(existingTimezones)
+    for (const tz of existingTimezones) {
+      // 若常用城市占用了规范名，别名也视为已占用
+      if (tz === 'America/Argentina/Buenos_Aires')
+        aliasOccupied.add('America/Buenos_Aires')
+      if (tz === 'Asia/Kolkata')
+        aliasOccupied.add('Asia/Calcutta')
+    }
 
-        if (cityName && country) {
-          allCities.push({
-            id: tz.toLowerCase().replace(/\//g, '-'),
-            city: cityName.replace(/_/g, ' '), // 英文名称（可以后续翻译）
-            country,
-            timezone: tz,
-            offset: 0, // 需要动态计算
-            commonCity: false,
-          })
-        }
-      }
+    allIanaTimezones.forEach((tz: string) => {
+      if (aliasOccupied.has(tz) || existingTimezones.has(tz))
+        return
+
+      const cityName = getIanaCityFallback(tz)
+      if (!cityName)
+        return
+
+      allCities.push({
+        id: tz.toLowerCase().replace(/\//g, '-'),
+        city: cityName,
+        country: resolveCountryField(tz),
+        timezone: tz,
+        offset: 0,
+        commonCity: false,
+      })
     })
 
     return allCities
   }
   catch {
-    // 如果浏览器不支持 Intl.supportedValuesOf，只返回常用城市
     return COMMON_CITIES
   }
 })()
@@ -96,37 +241,4 @@ export function getCityById(id: string): TimezoneCity | undefined {
 // 根据时区获取城市信息
 export function getCityByTimezone(timezone: string): TimezoneCity | undefined {
   return ALL_TIMEZONES.find(city => city.timezone === timezone)
-}
-
-// 国家名称到键的映射（用于翻译）
-export const COUNTRY_CODE_MAP: Record<string, string> = {
-  '中国': 'china',
-  '中国台湾': 'taiwan',
-  '日本': 'japan',
-  '韩国': 'korea',
-  '新加坡': 'singapore',
-  '泰国': 'thailand',
-  '阿联酋': 'uae',
-  '印度': 'india',
-  '澳大利亚': 'australia',
-  '新西兰': 'newzealand',
-  '英国': 'uk',
-  '法国': 'france',
-  '德国': 'germany',
-  '意大利': 'italy',
-  '西班牙': 'spain',
-  '俄罗斯': 'russia',
-  '荷兰': 'netherlands',
-  '美国': 'usa',
-  '加拿大': 'canada',
-  '墨西哥': 'mexico',
-  '巴西': 'brazil',
-  '阿根廷': 'argentina',
-  '埃及': 'egypt',
-  '南非': 'southafrica',
-}
-
-// 获取国家的翻译键
-export function getCountryKey(countryName: string): string {
-  return COUNTRY_CODE_MAP[countryName] || 'unknown'
 }

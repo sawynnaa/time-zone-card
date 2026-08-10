@@ -115,10 +115,10 @@ function handleCitySelect(cityId: string) {
     <div class="flex justify-between items-start mb-4">
       <div class="flex-1">
         <h3 class="text-2xl font-bold">
-          {{ city ? getCityName(city.id) : t('card.unknownCity') }}
+          {{ city ? getCityName(city.id, city.city, city.timezone) : t('card.unknownCity') }}
         </h3>
         <p :class="['text-sm mt-1', isActive ? 'opacity-70' : 'opacity-60']">
-          {{ city ? getCountryName(city.country) : t('card.unknownCountry') }}
+          {{ city ? getCountryName(city.country, city.timezone) : t('card.unknownCountry') }}
         </p>
         <p :class="['text-xs mt-1', isActive ? 'opacity-50' : 'opacity-40']">
           {{ city ? formatTimezone(city.timezone, timeFormat.isUTC) : '' }}
