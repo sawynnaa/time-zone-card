@@ -137,6 +137,146 @@ export function getOffsetNavFromZones(zones: TimezoneZoneEntry[]): Array<{
     .map(([offsetMinutes, { label, count }]) => ({ offsetMinutes, label, count }))
 }
 
+/**
+ * 按国家/地区聚合后的条目（英文国名 A–Z 排序）
+ * 左列：国家；右列：常见城市
+ */
+export interface CountryGroup {
+  /** ISO 3166-1 alpha-2 */
+  countryCode: string
+  /** 英文国名（排序与字母索引固定用 en） */
+  englishName: string
+  /** A–Z 或 # */
+  letter: string
+  /** 该国全部城市（common 优先，再按英文城市名） */
+  cities: TimezoneCity[]
+  /** 默认展示的常见城市（有 common 用 common，否则取前若干） */
+  commonCities: TimezoneCity[]
+}
+
+const ISO_CODE_RE = /^[A-Z]{2}$/
+const DEFAULT_CITIES_PER_COUNTRY = 6
+
+let enRegionDisplayNames: Intl.DisplayNames | null | undefined
+
+function getEnglishCountryName(isoCode: string): string {
+  try {
+    if (enRegionDisplayNames === undefined) {
+      try {
+        enRegionDisplayNames = new Intl.DisplayNames(['en'], { type: 'region', style: 'long' })
+      }
+      catch {
+        enRegionDisplayNames = null
+      }
+    }
+    const name = enRegionDisplayNames?.of(isoCode)
+    if (name && name.toUpperCase() !== isoCode)
+      return name
+  }
+  catch {
+    // ignore
+  }
+  return isoCode
+}
+
+function resolveCityIsoCode(city: TimezoneCity): string | undefined {
+  const fromTz = getTimezoneCountryCode(city.timezone)
+  if (fromTz && ISO_CODE_RE.test(fromTz))
+    return fromTz
+
+  const raw = (city.country || '').trim().toUpperCase()
+  if (ISO_CODE_RE.test(raw))
+    return raw
+
+  return undefined
+}
+
+function letterFromEnglishName(englishName: string): string {
+  const ch = englishName.trim().charAt(0).toUpperCase()
+  if (ch >= 'A' && ch <= 'Z')
+    return ch
+  return '#'
+}
+
+/**
+ * 按 ISO 国家聚合城市，按英文国名 A–Z 排序。
+ * 无 ISO 映射的条目（如部分 Etc/*）会被跳过。
+ */
+export function groupByCountry(
+  cities: TimezoneCity[],
+  options?: { defaultCityLimit?: number },
+): CountryGroup[] {
+  const limit = options?.defaultCityLimit ?? DEFAULT_CITIES_PER_COUNTRY
+  const map = new Map<string, TimezoneCity[]>()
+
+  for (const city of cities) {
+    const iso = resolveCityIsoCode(city)
+    if (!iso)
+      continue
+    const list = map.get(iso)
+    if (list)
+      list.push(city)
+    else
+      map.set(iso, [city])
+  }
+
+  const groups: CountryGroup[] = []
+
+  for (const [countryCode, groupCities] of map) {
+    const sorted = [...groupCities].sort(sortCitiesInZone)
+    // 同 id 去重（别名等边界情况）
+    const seen = new Set<string>()
+    const unique = sorted.filter((c) => {
+      if (seen.has(c.id))
+        return false
+      seen.add(c.id)
+      return true
+    })
+
+    const common = unique.filter(c => c.commonCity)
+    const commonCities = common.length > 0 ? common : unique.slice(0, limit)
+    const englishName = getEnglishCountryName(countryCode)
+
+    groups.push({
+      countryCode,
+      englishName,
+      letter: letterFromEnglishName(englishName),
+      cities: unique,
+      commonCities,
+    })
+  }
+
+  groups.sort((a, b) => {
+    if (a.letter === '#' && b.letter !== '#')
+      return 1
+    if (b.letter === '#' && a.letter !== '#')
+      return -1
+    return a.englishName.localeCompare(b.englishName, 'en')
+  })
+
+  return groups
+}
+
+/** 从国家分组提取字母快捷导航（去重，A–Z 再 #） */
+export function getLetterNavFromCountries(groups: CountryGroup[]): Array<{
+  letter: string
+  count: number
+}> {
+  const map = new Map<string, number>()
+  for (const g of groups) {
+    map.set(g.letter, (map.get(g.letter) ?? 0) + 1)
+  }
+  return [...map.entries()]
+    .sort((a, b) => {
+      if (a[0] === '#')
+        return 1
+      if (b[0] === '#')
+        return -1
+      return a[0].localeCompare(b[0])
+    })
+    .map(([letter, count]) => ({ letter, count }))
+}
+
 // 常用城市列表（country 使用 ISO 代码；city 使用英文规范名，UI 显示走 i18n/Intl）
 export const COMMON_CITIES: TimezoneCity[] = [
   // China
