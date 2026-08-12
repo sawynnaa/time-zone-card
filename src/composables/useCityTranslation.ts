@@ -41,9 +41,14 @@ export function useCityTranslation() {
 
   /**
    * 国家 / 地区名称（严格本地化）
+   * country 为空（如世界协调时）时返回空字符串
    */
   function getCountryName(country: string, timezone?: string): string {
     const loc = currentLocale.value
+
+    // 显式空国家（UTC 等无国家条目）
+    if (!(country || '').trim())
+      return ''
 
     // 1) ISO → i18n 特殊词条或 DisplayNames
     const iso = resolveCountryIso(country, timezone)

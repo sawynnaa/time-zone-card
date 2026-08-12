@@ -439,7 +439,10 @@ function closeModal() {
                     </span>
                   </div>
                 </div>
-                <div class="text-xs text-gray-500 mt-0.5">
+                <div
+                  v-if="displayCountryName(city.country, city.timezone)"
+                  class="text-xs text-gray-500 mt-0.5"
+                >
                   {{ displayCountryName(city.country, city.timezone) }}
                 </div>
               </button>
@@ -689,7 +692,10 @@ function closeModal() {
                     <div class="text-sm font-semibold text-gray-900 truncate leading-snug">
                       {{ displayCityName(zone.primaryCity) }}
                     </div>
-                    <div class="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
+                    <div
+                      v-if="displayCountryName(zone.country, zone.timezone)"
+                      class="text-xs text-gray-500 mt-0.5 flex items-center gap-1"
+                    >
                       <span class="i-carbon-earth shrink-0 opacity-60" />
                       <span class="truncate">{{ displayCountryName(zone.country, zone.timezone) }}</span>
                     </div>
@@ -736,7 +742,10 @@ function closeModal() {
                     <div class="text-sm font-semibold text-gray-900">
                       {{ displayCityName(zone.primaryCity) }}
                     </div>
-                    <div class="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
+                    <div
+                      v-if="displayCountryName(zone.country, zone.timezone)"
+                      class="text-xs text-gray-500 mt-0.5 flex items-center gap-1"
+                    >
                       <span class="i-carbon-earth shrink-0 opacity-60" />
                       {{ displayCountryName(zone.country, zone.timezone) }}
                     </div>

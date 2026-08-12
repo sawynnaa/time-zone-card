@@ -136,8 +136,9 @@ function handleCitySelect(cityId: string) {
         <h3 class="text-2xl font-bold">
           {{ displayCityLabel }}
         </h3>
-        <p :class="['text-sm mt-1', isActive ? 'opacity-70' : 'opacity-60']">
-          {{ displayCountryLabel }}
+        <!-- 国家为空时仍保留行高，与其他卡片文字对齐 -->
+        <p :class="['text-sm mt-1 min-h-[1.25rem]', isActive ? 'opacity-70' : 'opacity-60']">
+          {{ displayCountryLabel || '\u00A0' }}
         </p>
         <p :class="['text-xs mt-1', isActive ? 'opacity-50' : 'opacity-40']">
           {{ city ? formatTimezone(city.timezone, timeFormat.isUTC) : '' }}

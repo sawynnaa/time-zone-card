@@ -1,5 +1,7 @@
 export default {
   cities: {
+    // 협정 세계시
+    utc: '협정 세계시',
     // 중국
     beijing: '베이징',
     shanghai: '상하이',

@@ -1,5 +1,7 @@
 export default {
   cities: {
+    // Tempo coordinato universale
+    utc: 'Tempo coordinato universale',
     // Cina
     beijing: 'Pechino',
     shanghai: 'Shanghai',

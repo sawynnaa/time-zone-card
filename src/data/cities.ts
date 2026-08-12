@@ -279,6 +279,9 @@ export function getLetterNavFromCountries(groups: CountryGroup[]): Array<{
 
 // 常用城市列表（country 使用 ISO 代码；city 使用英文规范名，UI 显示走 i18n/Intl）
 export const COMMON_CITIES: TimezoneCity[] = [
+  // 世界协调时（UTC）— 排在常用列表最前，国家为空
+  { id: 'utc', city: 'UTC', country: '', timezone: 'Etc/UTC', offset: 0, commonCity: true },
+
   // China
   { id: 'beijing', city: 'Beijing', country: 'CN', timezone: 'Asia/Shanghai', offset: 480, commonCity: true },
   { id: 'shanghai', city: 'Shanghai', country: 'CN', timezone: 'Asia/Shanghai', offset: 480, commonCity: true },
@@ -324,7 +327,7 @@ export const COMMON_CITIES: TimezoneCity[] = [
 ]
 
 // 默认显示的城市ID列表
-export const DEFAULT_CARD_CITIES = ['beijing', 'tokyo', 'newyork', 'london']
+export const DEFAULT_CARD_CITIES = ['utc', 'beijing', 'tokyo', 'newyork', 'london']
 
 /** 解析时区对应的 country 字段：优先 ISO，否则 IANA 区域段 */
 function resolveCountryField(timezone: string): string {
@@ -346,6 +349,16 @@ export const ALL_TIMEZONES: TimezoneCity[] = (() => {
         aliasOccupied.add('America/Buenos_Aires')
       if (tz === 'Asia/Kolkata')
         aliasOccupied.add('Asia/Calcutta')
+      // UTC / Etc 系列别名，避免与「世界协调时」重复
+      if (tz === 'Etc/UTC' || tz === 'UTC') {
+        aliasOccupied.add('UTC')
+        aliasOccupied.add('Etc/UTC')
+        aliasOccupied.add('Etc/GMT')
+        aliasOccupied.add('Etc/GMT+0')
+        aliasOccupied.add('Etc/GMT-0')
+        aliasOccupied.add('Etc/Greenwich')
+        aliasOccupied.add('GMT')
+      }
     }
 
     allIanaTimezones.forEach((tz: string) => {

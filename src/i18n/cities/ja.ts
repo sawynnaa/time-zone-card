@@ -1,5 +1,7 @@
 export default {
   cities: {
+    // 協定世界時
+    utc: '協定世界時',
     // 中国
     beijing: '北京',
     shanghai: '上海',
