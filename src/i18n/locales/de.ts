@@ -30,6 +30,8 @@ export default {
     moreCities: '+{count} weitere',
     showLess: 'Weniger anzeigen',
     multiAddHint: 'Sie können mehrere Zeitzonen oder Städte nacheinander hinzufügen. Schließen Sie danach.',
+    scrollNavPrev: 'Nach links scrollen',
+    scrollNavNext: 'Nach rechts scrollen',
   },
   card: {
     unknownCity: 'Unbekannte Stadt',

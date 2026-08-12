@@ -30,6 +30,8 @@ export default {
     moreCities: '+{count} de plus',
     showLess: 'Réduire',
     multiAddHint: 'Vous pouvez ajouter plusieurs fuseaux ou villes. Fermez lorsque vous avez terminé.',
+    scrollNavPrev: 'Défiler vers la gauche',
+    scrollNavNext: 'Défiler vers la droite',
   },
   card: {
     unknownCity: 'Ville inconnue',

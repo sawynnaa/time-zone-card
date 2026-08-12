@@ -30,6 +30,8 @@ export default {
     moreCities: '+{count} más',
     showLess: 'Mostrar menos',
     multiAddHint: 'Puede añadir varias zonas o ciudades seguidas. Cierre cuando termine.',
+    scrollNavPrev: 'Desplazar a la izquierda',
+    scrollNavNext: 'Desplazar a la derecha',
   },
   card: {
     unknownCity: 'Ciudad desconocida',

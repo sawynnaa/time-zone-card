@@ -30,6 +30,8 @@ export default {
     moreCities: '他 {count} 件',
     showLess: '閉じる',
     multiAddHint: '複数のタイムゾーンや都市を続けて追加できます。完了したら閉じてください。',
+    scrollNavPrev: '左にスクロール',
+    scrollNavNext: '右にスクロール',
   },
   card: {
     unknownCity: '不明な都市',

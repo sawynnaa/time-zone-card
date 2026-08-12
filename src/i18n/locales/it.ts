@@ -30,6 +30,8 @@ export default {
     moreCities: '+{count} altre',
     showLess: 'Mostra meno',
     multiAddHint: 'Puoi aggiungere più fusi o città di seguito. Chiudi quando hai finito.',
+    scrollNavPrev: 'Scorri a sinistra',
+    scrollNavNext: 'Scorri a destra',
   },
   card: {
     unknownCity: 'Città sconosciuta',

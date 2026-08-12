@@ -30,6 +30,8 @@ export default {
     moreCities: '+{count} more',
     showLess: 'Show less',
     multiAddHint: 'You can add multiple timezones or cities. Close when done.',
+    scrollNavPrev: 'Scroll left',
+    scrollNavNext: 'Scroll right',
   },
   card: {
     unknownCity: 'Unknown City',

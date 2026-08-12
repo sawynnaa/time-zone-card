@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch, nextTick, onBeforeUnmount, type Ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
   COMMON_CITIES,
@@ -46,10 +46,16 @@ const searchInputRef = ref<HTMLInputElement | null>(null)
 const isMouseDownOutside = ref(false)
 const mode = ref<SelectorMode>('city')
 const listScrollRef = ref<HTMLElement | null>(null)
+const letterNavRef = ref<HTMLElement | null>(null)
+const offsetNavRef = ref<HTMLElement | null>(null)
 const activeOffsetKey = ref<number | null>(null)
 const activeLetter = ref<string | null>(null)
 /** 展开显示全部城市的国家 ISO 代码 */
 const expandedCountries = ref<Set<string>>(new Set())
+
+/** 横向快捷导航是否还能向左/右滚动（用于箭头按钮显隐） */
+const letterNavEdges = ref({ left: false, right: false })
+const offsetNavEdges = ref({ left: false, right: false })
 
 const modeOptions: Array<{ id: SelectorMode, labelKey: string, icon: string }> = [
   { id: 'city', labelKey: 'citySelector.byCity', icon: 'i-carbon-location' },
@@ -219,20 +225,22 @@ const countryGroups = computed((): CountryGroup[] => {
 
 const letterNavItems = computed(() => getLetterNavFromCountries(countryGroups.value))
 
-/** 每个字母段的首个国家 code，用于粘性字母锚点 */
-const firstCountryByLetter = computed(() => {
-  const map = new Map<string, string>()
+/** 按字母分段：每段一个包裹层，sticky 字母条只在本段内生效 */
+const countryLetterSections = computed(() => {
+  const sections: Array<{ letter: string, groups: CountryGroup[] }> = []
+  let current: { letter: string, groups: CountryGroup[] } | null = null
   for (const g of countryGroups.value) {
-    if (!map.has(g.letter))
-      map.set(g.letter, g.countryCode)
+    if (!current || current.letter !== g.letter) {
+      current = { letter: g.letter, groups: [] }
+      sections.push(current)
+    }
+    current.groups.push(g)
   }
-  return map
+  return sections
 })
 
-function countryRowId(group: CountryGroup): string | undefined {
-  if (firstCountryByLetter.value.get(group.letter) === group.countryCode)
-    return `country-letter-${group.letter === '#' ? 'other' : group.letter}`
-  return undefined
+function countryLetterAnchorId(letter: string): string {
+  return `country-letter-${letter === '#' ? 'other' : letter}`
 }
 
 function isCityAdded(cityId: string) {
@@ -257,34 +265,202 @@ function switchMode(next: SelectorMode) {
   expandedCountries.value = new Set()
   nextTick(() => {
     searchInputRef.value?.focus()
-    listScrollRef.value?.scrollTo({ top: 0 })
+    if (listScrollRef.value) {
+      getListStickyOffset(listScrollRef.value)
+      listScrollRef.value.scrollTo({ top: 0 })
+    }
   })
+}
+
+/**
+ * 列表内 sticky 表头高度（移动端表头 hidden 时为 0）。
+ * 锚点滚动必须减去该高度，否则目标行会被表头/字母条盖住。
+ * 同时写入 CSS 变量，供字母分段 sticky top 与表头对齐。
+ */
+function getListStickyOffset(container: HTMLElement): number {
+  const header = container.querySelector<HTMLElement>('[data-list-sticky-header]')
+  const height = header?.offsetHeight ?? 0
+  container.style.setProperty('--list-sticky-header-h', `${height}px`)
+  return height
+}
+
+/**
+ * 元素相对滚动容器的布局偏移（不受 sticky 视觉位置影响）。
+ * 锚点必须落在非 sticky 节点上：sticky 的 offsetTop/getBoundingClientRect
+ * 在“已粘住 / 被段尾推走”时不可靠。
+ * 依赖滚动容器 position: relative，使其成为 offsetParent。
+ */
+function getOffsetTopWithin(container: HTMLElement, el: HTMLElement): number {
+  let top = 0
+  let node: HTMLElement | null = el
+  while (node && node !== container) {
+    top += node.offsetTop
+    const parent = node.offsetParent as HTMLElement | null
+    if (!parent || parent === container)
+      break
+    if (!container.contains(parent))
+      return el.offsetTop
+    node = parent
+  }
+  return top
+}
+
+/**
+ * 将锚点滚到列表可见区顶部（表头下方）。
+ * 使用瞬时 scrollTop（不用 smooth）：连续点前一个字母时，smooth + sticky 重排
+ * 容易被浏览器 scroll anchoring 拉到「当前段尾 / 下一段头」，看起来像 C 的国家被折叠成 CD 紧贴。
+ */
+function scrollListToElement(el: HTMLElement) {
+  const container = listScrollRef.value
+  if (!container)
+    return
+  const stickyOffset = getListStickyOffset(container)
+  const top = Math.max(0, getOffsetTopWithin(container, el) - stickyOffset)
+  // 直接写 scrollTop，立即中断进行中的滚动并 bypass smooth 落点偏差
+  container.scrollTop = top
 }
 
 function scrollToOffset(offsetMinutes: number) {
   activeOffsetKey.value = offsetMinutes
-  const container = listScrollRef.value
   const el = document.getElementById(`offset-anchor-${offsetMinutes}`)
-  if (el && container) {
-    const containerRect = container.getBoundingClientRect()
-    const elRect = el.getBoundingClientRect()
-    const top = elRect.top - containerRect.top + container.scrollTop - 4
-    container.scrollTo({ top, behavior: 'smooth' })
-  }
+  if (el)
+    scrollListToElement(el)
+  // 点选后把对应 chip 滚进快捷导航可视区
+  nextTick(() => scrollChipIntoView(offsetNavRef.value, `[data-offset-chip="${offsetMinutes}"]`))
 }
 
 function scrollToLetter(letter: string) {
   activeLetter.value = letter
-  const container = listScrollRef.value
-  const anchor = letter === '#' ? 'other' : letter
-  const el = document.getElementById(`country-letter-${anchor}`)
-  if (el && container) {
-    const containerRect = container.getBoundingClientRect()
-    const elRect = el.getBoundingClientRect()
-    const top = elRect.top - containerRect.top + container.scrollTop - 4
-    container.scrollTo({ top, behavior: 'smooth' })
+  // 锚在分段容器上，而不是 sticky 字母条上
+  const el = document.getElementById(countryLetterAnchorId(letter))
+  if (el)
+    scrollListToElement(el)
+  nextTick(() => scrollChipIntoView(letterNavRef.value, `[data-letter-chip="${letter}"]`))
+}
+
+/**
+ * 横向导航：把垂直滚轮 / 触控板 delta 映射为横向滚动。
+ * 桌面端原生 overflow-x 几乎不响应竖直滚轮，体验很差。
+ */
+function onHorizontalNavWheel(e: WheelEvent) {
+  const el = e.currentTarget as HTMLElement | null
+  if (!el)
+    return
+
+  const maxScroll = el.scrollWidth - el.clientWidth
+  if (maxScroll <= 0)
+    return
+
+  // 触控板已有明显横向手势时优先用 deltaX；否则把竖直滚轮转成横向
+  const useHorizontal = Math.abs(e.deltaX) > Math.abs(e.deltaY)
+  const delta = useHorizontal ? e.deltaX : e.deltaY
+  if (delta === 0)
+    return
+
+  const prev = el.scrollLeft
+  const next = Math.max(0, Math.min(maxScroll, prev + delta))
+  if (next === prev)
+    return
+
+  // 只有真正发生横向滚动时才拦截，避免在两端卡住页面滚动
+  e.preventDefault()
+  el.scrollLeft = next
+}
+
+function updateNavEdges(
+  el: HTMLElement | null,
+  edges: Ref<{ left: boolean, right: boolean }>,
+) {
+  if (!el) {
+    edges.value = { left: false, right: false }
+    return
+  }
+  const maxScroll = el.scrollWidth - el.clientWidth
+  edges.value = {
+    left: el.scrollLeft > 1,
+    right: maxScroll > 1 && el.scrollLeft < maxScroll - 1,
   }
 }
+
+function onLetterNavScroll() {
+  updateNavEdges(letterNavRef.value, letterNavEdges)
+}
+
+function onOffsetNavScroll() {
+  updateNavEdges(offsetNavRef.value, offsetNavEdges)
+}
+
+function scrollNavBy(el: HTMLElement | null, direction: -1 | 1) {
+  if (!el)
+    return
+  const step = Math.max(120, Math.round(el.clientWidth * 0.55))
+  el.scrollBy({ left: direction * step, behavior: 'smooth' })
+}
+
+function scrollChipIntoView(container: HTMLElement | null, selector: string) {
+  if (!container)
+    return
+  const chip = container.querySelector<HTMLElement>(selector)
+  if (!chip)
+    return
+  const cLeft = container.scrollLeft
+  const cRight = cLeft + container.clientWidth
+  const chipLeft = chip.offsetLeft
+  const chipRight = chipLeft + chip.offsetWidth
+  const pad = 8
+  if (chipLeft < cLeft + pad) {
+    container.scrollTo({ left: Math.max(0, chipLeft - pad), behavior: 'smooth' })
+  }
+  else if (chipRight > cRight - pad) {
+    container.scrollTo({ left: chipRight - container.clientWidth + pad, behavior: 'smooth' })
+  }
+}
+
+/** 列表/窗口尺寸变化后刷新箭头显隐 */
+function refreshNavEdges() {
+  updateNavEdges(letterNavRef.value, letterNavEdges)
+  updateNavEdges(offsetNavRef.value, offsetNavEdges)
+}
+
+let navResizeObserver: ResizeObserver | null = null
+const wheelBoundNavs = new WeakSet<HTMLElement>()
+
+function bindNavInteractions() {
+  navResizeObserver?.disconnect()
+  if (typeof ResizeObserver !== 'undefined') {
+    navResizeObserver = new ResizeObserver(() => refreshNavEdges())
+  }
+
+  for (const el of [letterNavRef.value, offsetNavRef.value]) {
+    if (!el)
+      continue
+    navResizeObserver?.observe(el)
+    // 必须 non-passive，否则 preventDefault 无法把竖直滚轮转成横向
+    if (!wheelBoundNavs.has(el)) {
+      el.addEventListener('wheel', onHorizontalNavWheel, { passive: false })
+      wheelBoundNavs.add(el)
+    }
+  }
+}
+
+watch(
+  [mode, letterNavItems, offsetNavItems, () => props.show],
+  async () => {
+    await nextTick()
+    refreshNavEdges()
+    bindNavInteractions()
+  },
+  { flush: 'post' },
+)
+
+onBeforeUnmount(() => {
+  navResizeObserver?.disconnect()
+  navResizeObserver = null
+  for (const el of [letterNavRef.value, offsetNavRef.value]) {
+    if (el)
+      el.removeEventListener('wheel', onHorizontalNavWheel)
+  }
+})
 
 function localTimeForOffset(offsetMinutes: number): string {
   return dayjs(offsetBaseDate.value).utcOffset(offsetMinutes).format('HH:mm')
@@ -461,49 +637,84 @@ function closeModal() {
 
           <!-- ========== 按国家模式 ========== -->
           <template v-else-if="mode === 'country'">
-            <!-- A–Z 快捷导航 -->
+            <!-- A–Z 快捷导航（横向滚动：滚轮映射 + 左右箭头） -->
             <div
               v-if="letterNavItems.length > 0"
-              class="mb-3 shrink-0 flex gap-1 overflow-x-auto pb-1 scrollbar-thin"
+              class="mb-3 shrink-0 relative group/nav"
             >
               <button
-                v-for="item in letterNavItems"
-                :key="item.letter"
+                v-show="letterNavEdges.left"
                 type="button"
-                :class="[
-                  'shrink-0 min-w-[1.75rem] px-2 py-1 rounded-md text-xs font-semibold tabular-nums border transition-colors',
-                  activeLetter === item.letter
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-gray-50 text-gray-700 border-gray-200 hover:border-blue-400 hover:text-blue-600',
-                ]"
-                @click="scrollToLetter(item.letter)"
+                class="absolute left-0 top-0 bottom-1 z-10 w-7 flex items-center justify-center rounded-md bg-white/95 text-gray-600 shadow-sm border border-gray-200 hover:bg-gray-50 hover:text-blue-600 transition-colors"
+                :aria-label="t('citySelector.scrollNavPrev')"
+                @click="scrollNavBy(letterNavRef, -1)"
               >
-                {{ item.letter }}
+                <span class="i-carbon-chevron-left text-sm" />
+              </button>
+              <div
+                ref="letterNavRef"
+                class="flex gap-1 overflow-x-auto pb-1 px-0.5 scrollbar-thin overscroll-x-contain"
+                @scroll.passive="onLetterNavScroll"
+              >
+                <button
+                  v-for="item in letterNavItems"
+                  :key="item.letter"
+                  type="button"
+                  :data-letter-chip="item.letter"
+                  :class="[
+                    'shrink-0 min-w-[1.75rem] px-2 py-1 rounded-md text-xs font-semibold tabular-nums border transition-colors',
+                    activeLetter === item.letter
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-gray-50 text-gray-700 border-gray-200 hover:border-blue-400 hover:text-blue-600',
+                  ]"
+                  @click="scrollToLetter(item.letter)"
+                >
+                  {{ item.letter }}
+                </button>
+              </div>
+              <button
+                v-show="letterNavEdges.right"
+                type="button"
+                class="absolute right-0 top-0 bottom-1 z-10 w-7 flex items-center justify-center rounded-md bg-white/95 text-gray-600 shadow-sm border border-gray-200 hover:bg-gray-50 hover:text-blue-600 transition-colors"
+                :aria-label="t('citySelector.scrollNavNext')"
+                @click="scrollNavBy(letterNavRef, 1)"
+              >
+                <span class="i-carbon-chevron-right text-sm" />
               </button>
             </div>
 
             <div
               v-if="countryGroups.length > 0"
               ref="listScrollRef"
-              class="overflow-auto min-h-0 flex-1 border border-gray-200 rounded-lg"
+              class="relative overflow-auto min-h-0 flex-1 border border-gray-200 rounded-lg [overflow-anchor:none]"
             >
               <!-- 表头（桌面） -->
-              <div class="hidden md:grid sticky top-0 z-20 grid-cols-[minmax(10rem,0.9fr)_minmax(14rem,1.6fr)] gap-3 px-4 py-2.5 bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-600 uppercase tracking-wide">
+              <div
+                data-list-sticky-header
+                class="hidden md:grid sticky top-0 z-20 grid-cols-[minmax(10rem,0.9fr)_minmax(14rem,1.6fr)] gap-3 px-4 py-2.5 bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-600 uppercase tracking-wide"
+              >
                 <div>{{ t('citySelector.colCountry') }}</div>
                 <div>{{ t('citySelector.colCitiesInCountry') }}</div>
               </div>
 
-              <template v-for="group in countryGroups" :key="group.countryCode">
-                <!-- 字母分段标题（该字母首个国家前） -->
+              <!-- 每个字母一段：包裹层限制 sticky 范围；id 锚在段容器（非 sticky）上 -->
+              <div
+                v-for="section in countryLetterSections"
+                :id="countryLetterAnchorId(section.letter)"
+                :key="section.letter"
+                data-letter-section
+              >
                 <div
-                  v-if="countryRowId(group)"
-                  :id="countryRowId(group)"
-                  class="sticky top-0 md:top-[2.4rem] z-10 px-4 py-1.5 bg-gray-100/95 backdrop-blur-sm border-b border-gray-200 text-xs font-bold text-gray-500 tracking-widest scroll-mt-2"
+                  class="sticky top-0 md:top-[var(--list-sticky-header-h,2.4rem)] z-10 px-4 py-1.5 bg-gray-100/95 backdrop-blur-sm border-b border-gray-200 text-xs font-bold text-gray-500 tracking-widest"
                 >
-                  {{ group.letter }}
+                  {{ section.letter }}
                 </div>
 
-                <div class="border-b border-gray-100 last:border-b-0">
+                <div
+                  v-for="group in section.groups"
+                  :key="group.countryCode"
+                  class="border-b border-gray-100 last:border-b-0"
+                >
                   <!-- 桌面行 -->
                   <div class="hidden md:grid grid-cols-[minmax(10rem,0.9fr)_minmax(14rem,1.6fr)] gap-3 px-4 py-3 items-start hover:bg-blue-50/40 transition-colors">
                     <div class="min-w-0">
@@ -611,7 +822,7 @@ function closeModal() {
                     </div>
                   </div>
                 </div>
-              </template>
+              </div>
             </div>
 
             <div v-else class="text-center py-12 text-gray-500 flex-1">
@@ -634,34 +845,62 @@ function closeModal() {
 
           <!-- ========== 时区选择模式 ========== -->
           <template v-else>
-            <!-- 偏移快捷导航 -->
+            <!-- 偏移快捷导航（横向滚动：滚轮映射 + 左右箭头） -->
             <div
               v-if="offsetNavItems.length > 0"
-              class="mb-3 shrink-0 flex gap-1.5 overflow-x-auto pb-1 scrollbar-thin"
+              class="mb-3 shrink-0 relative group/nav"
             >
               <button
-                v-for="item in offsetNavItems"
-                :key="item.offsetMinutes"
+                v-show="offsetNavEdges.left"
                 type="button"
-                :class="[
-                  'shrink-0 px-2.5 py-1 rounded-md text-xs font-medium tabular-nums border transition-colors',
-                  activeOffsetKey === item.offsetMinutes
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-gray-50 text-gray-700 border-gray-200 hover:border-blue-400 hover:text-blue-600',
-                ]"
-                @click="scrollToOffset(item.offsetMinutes)"
+                class="absolute left-0 top-0 bottom-1 z-10 w-7 flex items-center justify-center rounded-md bg-white/95 text-gray-600 shadow-sm border border-gray-200 hover:bg-gray-50 hover:text-blue-600 transition-colors"
+                :aria-label="t('citySelector.scrollNavPrev')"
+                @click="scrollNavBy(offsetNavRef, -1)"
               >
-                {{ item.label }}
+                <span class="i-carbon-chevron-left text-sm" />
+              </button>
+              <div
+                ref="offsetNavRef"
+                class="flex gap-1.5 overflow-x-auto pb-1 px-0.5 scrollbar-thin overscroll-x-contain"
+                @scroll.passive="onOffsetNavScroll"
+              >
+                <button
+                  v-for="item in offsetNavItems"
+                  :key="item.offsetMinutes"
+                  type="button"
+                  :data-offset-chip="item.offsetMinutes"
+                  :class="[
+                    'shrink-0 px-2.5 py-1 rounded-md text-xs font-medium tabular-nums border transition-colors',
+                    activeOffsetKey === item.offsetMinutes
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-gray-50 text-gray-700 border-gray-200 hover:border-blue-400 hover:text-blue-600',
+                  ]"
+                  @click="scrollToOffset(item.offsetMinutes)"
+                >
+                  {{ item.label }}
+                </button>
+              </div>
+              <button
+                v-show="offsetNavEdges.right"
+                type="button"
+                class="absolute right-0 top-0 bottom-1 z-10 w-7 flex items-center justify-center rounded-md bg-white/95 text-gray-600 shadow-sm border border-gray-200 hover:bg-gray-50 hover:text-blue-600 transition-colors"
+                :aria-label="t('citySelector.scrollNavNext')"
+                @click="scrollNavBy(offsetNavRef, 1)"
+              >
+                <span class="i-carbon-chevron-right text-sm" />
               </button>
             </div>
 
             <div
               v-if="timezoneZones.length > 0"
               ref="listScrollRef"
-              class="overflow-auto min-h-0 flex-1 border border-gray-200 rounded-lg"
+              class="relative overflow-auto min-h-0 flex-1 border border-gray-200 rounded-lg [overflow-anchor:none]"
             >
               <!-- 表头（桌面） -->
-              <div class="hidden md:grid sticky top-0 z-20 grid-cols-[minmax(9rem,0.9fr)_minmax(12rem,1.2fr)_minmax(12rem,1.6fr)] gap-3 px-4 py-2.5 bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-600 uppercase tracking-wide">
+              <div
+                data-list-sticky-header
+                class="hidden md:grid sticky top-0 z-20 grid-cols-[minmax(9rem,0.9fr)_minmax(12rem,1.2fr)_minmax(12rem,1.6fr)] gap-3 px-4 py-2.5 bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-600 uppercase tracking-wide"
+              >
                 <div>{{ t('citySelector.colUtcLocal') }}</div>
                 <div>{{ t('citySelector.colTimezoneCountry') }}</div>
                 <div>{{ t('citySelector.colMajorCities') }}</div>
@@ -672,7 +911,7 @@ function closeModal() {
                 v-for="zone in timezoneZones"
                 :id="zoneRowId(zone)"
                 :key="zone.timezone"
-                class="border-b border-gray-100 last:border-b-0 scroll-mt-2"
+                class="border-b border-gray-100 last:border-b-0"
               >
                 <!-- 桌面行 -->
                 <div
@@ -833,5 +1072,24 @@ function closeModal() {
 
 .scrollbar-thin {
   scrollbar-width: thin;
+  /* 桌面端更容易发现可横向滚动 */
+  scrollbar-color: rgb(203 213 225) transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  height: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: rgb(203 213 225);
+  border-radius: 999px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(148 163 184);
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
 }
 </style>

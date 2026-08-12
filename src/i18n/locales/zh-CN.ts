@@ -30,6 +30,8 @@ export default {
     moreCities: '还有 {count} 个',
     showLess: '收起',
     multiAddHint: '可连续添加多个时区或城市，完成后点击右上角关闭',
+    scrollNavPrev: '向左滚动',
+    scrollNavNext: '向右滚动',
   },
   card: {
     unknownCity: '未知城市',

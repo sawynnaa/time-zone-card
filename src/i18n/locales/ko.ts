@@ -30,6 +30,8 @@ export default {
     moreCities: '+{count}개 더',
     showLess: '접기',
     multiAddHint: '여러 시간대나 도시를 이어서 추가할 수 있습니다. 완료되면 닫으세요.',
+    scrollNavPrev: '왼쪽으로 스크롤',
+    scrollNavNext: '오른쪽으로 스크롤',
   },
   card: {
     unknownCity: '알 수 없는 도시',
